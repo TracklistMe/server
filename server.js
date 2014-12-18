@@ -6,6 +6,7 @@
 
 var path = require('path');
 var qs = require('querystring');
+var config = require('./config');
 
 var async = require('async');
 var bcrypt = require('bcryptjs');
@@ -22,8 +23,7 @@ var sequelize = new Sequelize(config.MYSQL_DATABASE, config.MYSQL_USER, config.M
   dialect: 'mysql'
 });
 
-
-var config = require('./config');
+ 
 
 
 var User = sequelize.define('User', {
@@ -124,7 +124,24 @@ app.set('port', process.env.PORT || 3000);
 app.use(logger('dev'));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
+app.use(function (req, res, next) {
 
+    // Website you wish to allow to connect
+    res.setHeader('Access-Control-Allow-Origin', 'http://localhost:9000');
+
+    // Request methods you wish to allow
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
+
+    // Request headers you wish to allow
+    res.setHeader('Access-Control-Allow-Headers', 'X-Requested-With,content-type');
+
+    // Set to true if you need the website to include cookies in the requests sent
+    // to the API (e.g. in case you use sessions)
+    res.setHeader('Access-Control-Allow-Credentials', true);
+
+    // Pass to next layer of middleware
+    next();
+});
 // Force HTTPS on Heroku
 if (app.get('env') === 'production') {
   app.use(function(req, res, next) {
@@ -287,6 +304,10 @@ app.post('/auth/google', function(req, res) {
           if (existingUser) {
             return res.send({ token: createToken(existingUser) });
           }
+
+           
+
+
           var user = new User();
           user.google = profile.sub;
           user.displayName = profile.name;
@@ -663,11 +684,12 @@ app.get('/auth/twitter', function(req, res) {
       token: req.query.oauth_token,
       verifier: req.query.oauth_verifier
     };
-
+    console.log("step 3")
     // Step 3. Exchange oauth token and oauth verifier for access token.
     request.post({ url: accessTokenUrl, oauth: accessTokenOauth }, function(err, response, profile) {
       profile = qs.parse(profile);
 
+          console.log("step 4")
       // Step 4a. Link user accounts.
       if (req.headers.authorization) {
         User.findOne({ twitter: profile.user_id }, function(err, existingUser) {
@@ -688,19 +710,21 @@ app.get('/auth/twitter', function(req, res) {
           });
         });
       } else {
+            console.log("step 4b")
         // Step 4b. Create a new user account or return an existing one.
         User.findOne({ twitter: profile.user_id }, function(err, existingUser) {
           if (existingUser) {
             var token = createToken(existingUser);
             return res.send({ token: token });
           }
-          var user = new User();
-          user.twitter = profile.user_id;
-          user.displayName = profile.screen_name;
-          user.save(function() {
-            var token = createToken(user);
-            res.send({ token: token });
-          });
+
+          User.create({
+            twitter: profile.user_id,
+            displayName: profile.screen_name
+          }).success(function(user) {
+            res.send({ token: createToken(user) });
+          })  
+ 
         });
       }
     });
