@@ -1,0 +1,19 @@
+{
+  "name": "satellizer",
+  "main": "server.js",
+  "dependencies": {
+    "bcrypt": "^0.8.0",
+    "bcryptjs": "^0.7.12",
+    "body-parser": "^1.6.2",
+    "express": "^4.8.2",
+    "jwt-simple": "^0.2.0",
+    "lodash": "^2.4.1",
+    "moment": "^2.8.1",
+    "mongodb": "^1.4.24",
+    "mongoose": "^3.8.14",
+    "morgan": "^1.2.2",
+    "mysql": "^2.5.4",
+    "request": "^2.40.0",
+    "sequelize": "^2.0.0-rc3"
+  }
+}
