@@ -41,7 +41,7 @@ var User = sequelize.define('User', {
   }, {
     instanceMethods: {
       comparePassword : function(password)  { 
-        console.log(this.password)
+        
         return bcrypt.compareSync(password,this.password)
       }
     }
@@ -66,15 +66,7 @@ User.beforeCreate(function(user, fn) {
   )
  */
 
-sequelize.sync().success(function() {
-  User.create({
-    email: 'a@a.it',
-      password: 'test',
-      displayName: 'asdasd',
-  }).success(function(sdepold) {
-    console.log("object created")
-  })
-})
+ 
  
 /*
 var userSchema = new mongoose.Schema({
@@ -128,12 +120,11 @@ app.use(function (req, res, next) {
 
     // Website you wish to allow to connect
     res.setHeader('Access-Control-Allow-Origin', 'http://localhost:9000');
-
     // Request methods you wish to allow
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
 
     // Request headers you wish to allow
-    res.setHeader('Access-Control-Allow-Headers', 'X-Requested-With,content-type');
+    res.setHeader('Access-Control-Allow-Headers', 'X-Requested-With,content-type,Authorization');
 
     // Set to true if you need the website to include cookies in the requests sent
     // to the API (e.g. in case you use sessions)
@@ -156,6 +147,7 @@ if (app.get('env') === 'production') {
  |--------------------------------------------------------------------------
  */
 function ensureAuthenticated(req, res, next) {
+ 
   if (!req.headers.authorization) {
     return res.status(401).send({ message: 'Please make sure your request has an Authorization header' });
   }
@@ -164,6 +156,7 @@ function ensureAuthenticated(req, res, next) {
   if (payload.exp <= moment().unix()) {
     return res.status(401).send({ message: 'Token has expired' });
   }
+  
   req.user = payload.sub;
   next();
 }
@@ -175,7 +168,7 @@ function ensureAuthenticated(req, res, next) {
  */
 function createToken(user) {
   var payload = {
-    sub: user._id,
+    sub: user.id,
     iat: moment().unix(),
     exp: moment().add(14, 'days').unix()
   };
@@ -188,7 +181,9 @@ function createToken(user) {
  |--------------------------------------------------------------------------
  */
 app.get('/api/me', ensureAuthenticated, function(req, res) {
-  User.findById(req.user, function(err, user) {
+   
+  User.find({ where: {id: req.user} }).then(function(user) {
+    
     res.send(user);
   });
 });
@@ -199,7 +194,7 @@ app.get('/api/me', ensureAuthenticated, function(req, res) {
  |--------------------------------------------------------------------------
  */
 app.put('/api/me', ensureAuthenticated, function(req, res) {
-  User.findById(req.user, function(err, user) {
+  User.find({ where: {id: req.user} }).then(function(user) {
     if (!user) {
       return res.status(400).send({ message: 'User not found' });
     }
@@ -218,7 +213,7 @@ app.put('/api/me', ensureAuthenticated, function(req, res) {
  |--------------------------------------------------------------------------
  */
 app.post('/auth/login', function(req, res) {
-  console.log("LOGIN WITH CREDENTIAL")
+  
   User.find({ where: {email: req.body.email} }).then(function(user) {
   // project will be the first entry of the Projects table with the title 'aProject' || null
     if (!user) {
@@ -479,7 +474,6 @@ app.post('/auth/live', function(req, res) {
     function(accessToken, done) {
       var profileUrl = 'https://apis.live.net/v5.0/me?access_token=' + accessToken.access_token;
       request.get({ url: profileUrl, json: true }, function(err, response, profile) {
-        console.log(profile);
         done(err, profile);
       });
     },
@@ -692,12 +686,16 @@ app.get('/auth/twitter', function(req, res) {
           console.log("step 4")
       // Step 4a. Link user accounts.
       if (req.headers.authorization) {
-        User.findOne({ twitter: profile.user_id }, function(err, existingUser) {
+
+        User.find({ where: {twitter: profile.user_id} }).then(function(existingUser) {
           if (existingUser) {
             return res.status(409).send({ message: 'There is already a Twitter account that belongs to you' });
           }
           var token = req.headers.authorization.split(' ')[1];
           var payload = jwt.decode(token, config.TOKEN_SECRET);
+
+
+
           User.findById(payload.sub, function(err, user) {
             if (!user) {
               return res.status(400).send({ message: 'User not found' });
@@ -712,7 +710,8 @@ app.get('/auth/twitter', function(req, res) {
       } else {
             console.log("step 4b")
         // Step 4b. Create a new user account or return an existing one.
-        User.findOne({ twitter: profile.user_id }, function(err, existingUser) {
+        // 
+        User.find({ where: {twitter: profile.user_id} }).then(function(existingUser) {
           if (existingUser) {
             var token = createToken(existingUser);
             return res.send({ token: token });
@@ -807,7 +806,8 @@ app.post('/auth/foursquare', function(req, res) {
 
 app.get('/auth/unlink/:provider', ensureAuthenticated, function(req, res) {
   var provider = req.params.provider;
-  User.findById(req.user, function(err, user) {
+
+  User.find({ where: {id: req.user} }).then(function(user) {
     if (!user) {
       return res.status(400).send({ message: 'User not found' });
     }
