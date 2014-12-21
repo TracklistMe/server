@@ -678,12 +678,14 @@ app.get('/auth/twitter', function(req, res) {
       token: req.query.oauth_token,
       verifier: req.query.oauth_verifier
     };
-    console.log("step 3")
+
     // Step 3. Exchange oauth token and oauth verifier for access token.
     request.post({ url: accessTokenUrl, oauth: accessTokenOauth }, function(err, response, profile) {
+      console.log("----------------")
+      console.log(profile)
+      console.log("----------------")
       profile = qs.parse(profile);
-
-          console.log("step 4")
+ 
       // Step 4a. Link user accounts.
       if (req.headers.authorization) {
 
@@ -693,18 +695,20 @@ app.get('/auth/twitter', function(req, res) {
           }
           var token = req.headers.authorization.split(' ')[1];
           var payload = jwt.decode(token, config.TOKEN_SECRET);
+          console.log(profile)          
 
-
-
-          User.findById(payload.sub, function(err, user) {
+          User.find({ where: {id: payload.sub} }).then(function(user){
             if (!user) {
-              return res.status(400).send({ message: 'User not found' });
+              return res.status(400).send({ message: 'Something went wrong in the linkage process' });
             }
             user.twitter = profile.user_id;
+            // keep one of the two usernames 
             user.displayName = user.displayName || profile.screen_name;
-            user.save(function(err) {
+            user.save().success(function() { 
               res.send({ token: createToken(user) });
-            });
+            }).error(function(error) {
+              // update fail ... :O
+            })
           });
         });
       } else {
