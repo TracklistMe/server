@@ -5,9 +5,12 @@
  */
 
 var path = require('path');
+var fs = require('fs-extra');       //File System - for file manipulation
+var util = require('util'); 
+var busboy = require('connect-busboy'); 
 var qs = require('querystring');
 var config = require('./config');
-
+var http = require('http');
 var async = require('async');
 var bcrypt = require('bcryptjs');
 var bodyParser = require('body-parser');
@@ -17,7 +20,8 @@ var jwt = require('jwt-simple');
 var moment = require('moment');
 var mongoose = require('mongoose');
 var request = require('request');
-var Sequelize = require('sequelize')
+var Sequelize = require('sequelize');
+var multipart = require('connect-multiparty');
 var sequelize = new Sequelize(config.MYSQL_DATABASE, config.MYSQL_USER, config.MYSQL_PASSWORD, {
   host: config.MYSQL_HOST,
   dialect: 'mysql'
@@ -124,7 +128,7 @@ app.use(function (req, res, next) {
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
 
     // Request headers you wish to allow
-    res.setHeader('Access-Control-Allow-Headers', 'X-Requested-With,content-type,Authorization');
+    res.setHeader('Access-Control-Allow-Headers', 'my-header,X-Requested-With,content-type,Authorization');
 
     // Set to true if you need the website to include cookies in the requests sent
     // to the API (e.g. in case you use sessions)
@@ -140,6 +144,104 @@ if (app.get('env') === 'production') {
     protocol == 'https' ? next() : res.redirect('https://' + req.hostname + req.url);
   });
 } 
+
+/* ========================================================== 
+Use busboy middleware
+============================================================ */
+app.use(busboy());
+
+app.post('/upload',function (req, res, next) {
+    var arr;
+    var fstream;
+    var filesize = 0;
+    req.pipe(req.busboy);
+
+      //--------------------------------------------------------------------------
+    req.busboy.on('file', function (fieldname, file, filename, encoding, mimetype) {
+      //uploaded file name, encoding, MIME type
+      console.log('File [' + fieldname +']: filename:' + filename + ', encoding:' + encoding + ', MIME type:'+ mimetype);
+      //uploaded file size
+      file.on('data', function(data) {
+      console.log('File [' + fieldname + '] got ' + data.length + ' bytes');
+      fileSize = data.length;
+      console.log("fileSize= " + fileSize);
+    });
+
+    file.on('end', function() {
+      console.log('File [' + fieldname + '] ENDed');
+      console.log("-------------------------");
+    });
+
+    //populate array
+    //I am collecting file info in data read about the file. It may be more correct to read 
+    //file data after the file has been saved to img folder i.e. after file.pipe(stream) completes
+    //the file size can be got using stats.size as shown below
+    arr= [{fieldname: fieldname, filename: filename, encoding: encoding, MIMEtype: mimetype}];
+    
+          //Path where image will be uploaded
+        fstream = fs.createWriteStream(__dirname + '/uploadFolder/img/' + filename); //create a writable stream
+        console.log(__dirname + '/uploadFolder/img/' + filename)
+        file.pipe(fstream);   //pipe the post data to the file
+
+
+    //stream Ended - (data written) send the post response
+      req.on('end', function () {
+        res.writeHead(200, {"content-type":"text/html"});   //http response header
+
+          //res.end(JSON.stringify(arr));             //http response body - send json data
+      });
+
+    //Finished writing to stream
+    fstream.on('finish', function () { 
+      console.log('Finished writing!'); 
+
+        //Get file stats (including size) for file saved to server
+        fs.stat(__dirname + '/uploadFolder/img/' + filename, function(err, stats) {
+            if(err) 
+              throw err;      
+            //if a file
+            if (stats.isFile()) {
+                //console.log("It\'s a file & stats.size= " + JSON.stringify(stats)); 
+                console.log("File size saved to server: " + stats.size);  
+                console.log("-----------------------");
+            };
+          });
+    });
+
+
+        // error
+        fstream.on('error', function (err) {
+          console.log(err);
+        });
+
+    
+    });  // @END/ .req.busboy
+  });  //  @END/ POST
+  
+
+
+  //PUT
+app.put('/upload',function (req, res, next) {
+
+      var fstream;
+      req.pipe(req.busboy);
+      req.busboy.on('file', function (fieldname, file, filename) {
+          console.log("Uploading: " + filename);
+
+          //Path where image will be uploaded
+          fstream = fs.createWriteStream(__dirname + '/img/' + filename);
+          file.pipe(fstream);
+
+          fstream.on('close', function () {
+              console.log("Upload Finished of " + filename);
+              res.redirect('back');       //where to go next
+          });
+      });
+  });
+
+
+ 
+
 
 /*
  |--------------------------------------------------------------------------
@@ -666,6 +768,7 @@ app.get('/auth/twitter', function(req, res) {
     // Step 1. Obtain request token for the authorization popup.
     request.post({ url: requestTokenUrl, oauth: requestTokenOauth }, function(err, response, body) {
       var oauthToken = qs.parse(body);
+      console.log(body)
       var params = qs.stringify({ oauth_token: oauthToken.oauth_token });
 
       // Step 2. Redirect to the authorization screen.
@@ -720,7 +823,7 @@ app.get('/auth/twitter', function(req, res) {
             var token = createToken(existingUser);
             return res.send({ token: token });
           }
-
+          console.log(profile)
           User.create({
             twitter: profile.user_id,
             displayName: profile.screen_name
