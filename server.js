@@ -9,10 +9,9 @@ var fs = require('fs-extra');       //File System - for file manipulation
 var util = require('util'); 
 var busboy = require('connect-busboy'); 
 var qs = require('querystring');
-var config = require('./config');
+var config = require('libs/config/config');
 var http = require('http');
-var async = require('async');
-var bcrypt = require('bcryptjs');
+var async = require('async'); 
 var bodyParser = require('body-parser');
 var express = require('express');
 var logger = require('morgan');
@@ -20,46 +19,18 @@ var jwt = require('jwt-simple');
 var moment = require('moment');
 var mongoose = require('mongoose');
 var request = require('request');
-var Sequelize = require('sequelize');
+
 var multipart = require('connect-multiparty');
-var sequelize = new Sequelize(config.MYSQL_DATABASE, config.MYSQL_USER, config.MYSQL_PASSWORD, {
-  host: config.MYSQL_HOST,
-  dialect: 'mysql'
-});
+var im = require('imagemagick');
+
+/* DATA BASE */
+
+var dbProxy = require('libs/database/databaseProxy');
+
+
+
 
  
-
-
-var User = sequelize.define('User', {
-  email: Sequelize.STRING,
-  password: Sequelize.STRING,
-  displayName: Sequelize.STRING,
-  facebook: Sequelize.STRING,
-  foursquare: Sequelize.STRING,
-  google: Sequelize.STRING,
-  github: Sequelize.STRING,
-  linkedin: Sequelize.STRING,
-  live: Sequelize.STRING,
-  yahoo: Sequelize.STRING,
-  twitter: Sequelize.STRING
-  }, {
-    instanceMethods: {
-      comparePassword : function(password)  { 
-        
-        return bcrypt.compareSync(password,this.password)
-      }
-    }
-  }
-);
-
-
-
-// UPDATE THE PASSWORD
-User.hook('beforeValidate', function(user, fn) {
-    var salt = bcrypt.genSaltSync(10);
-    user.password = bcrypt.hashSync(user.password, salt);
-    return sequelize.Promise.resolve(user)
-})
 
 /*
 User.beforeCreate(function(user, fn) {
@@ -150,7 +121,12 @@ Use busboy middleware
 ============================================================ */
 app.use(busboy());
 
-app.post('/upload',function (req, res, next) {
+app.use('/images', express.static(__dirname + '/uploadFolder/img/'));
+
+
+app.post('/upload', ensureAuthenticated, function (req, res, next) {
+
+    console.log("USER"+req.user)
     var arr;
     var fstream;
     var filesize = 0;
@@ -162,15 +138,25 @@ app.post('/upload',function (req, res, next) {
       console.log('File [' + fieldname +']: filename:' + filename + ', encoding:' + encoding + ', MIME type:'+ mimetype);
       //uploaded file size
       file.on('data', function(data) {
-      console.log('File [' + fieldname + '] got ' + data.length + ' bytes');
+      //console.log('File [' + fieldname + '] got ' + data.length + ' bytes');
       fileSize = data.length;
-      console.log("fileSize= " + fileSize);
+      //console.log("fileSize= " + fileSize);
     });
 
     file.on('end', function() {
       console.log('File [' + fieldname + '] ENDed');
       console.log("-------------------------");
     });
+    if (!Date.now) {
+        Date.now = function() { return new Date().getTime(); }
+    }
+    var extension = filename.split('.').slice(0).pop(),
+    filename = filename.replace(extension, '').replace(/\W+/g, '') + "." + extension;
+    filename = req.user+"_"+Date.now()+"_"+filename;
+    
+    
+     
+
 
     //populate array
     //I am collecting file info in data read about the file. It may be more correct to read 
@@ -178,23 +164,47 @@ app.post('/upload',function (req, res, next) {
     //the file size can be got using stats.size as shown below
     arr= [{fieldname: fieldname, filename: filename, encoding: encoding, MIMEtype: mimetype}];
     
-          //Path where image will be uploaded
-        fstream = fs.createWriteStream(__dirname + '/uploadFolder/img/' + filename); //create a writable stream
-        console.log(__dirname + '/uploadFolder/img/' + filename)
-        file.pipe(fstream);   //pipe the post data to the file
+    //save files in the form of userID + timestamp + filenameSanitized
+    
 
+ 
+
+          //Path where image will be uploaded
+    fstream = fs.createWriteStream(__dirname + '/uploadFolder/img/' + filename); //create a writable stream
+    file.pipe(fstream);   //pipe the post data to the file
+
+   
 
     //stream Ended - (data written) send the post response
       req.on('end', function () {
-        res.writeHead(200, {"content-type":"text/html"});   //http response header
+        dbProxy.User.find({ where: {id: req.user} }).then(function(user) {
+          user.avatar = 'cropped_' +filename,
+          user.save(function(){
+                         //http response body - send json data
+          });
+          res.writeHead(200, {"content-type":"text/html"});   //http response header
+          res.end(JSON.stringify(arr)); 
+            
+        });
 
-          //res.end(JSON.stringify(arr));             //http response body - send json data
+        
       });
 
     //Finished writing to stream
     fstream.on('finish', function () { 
       console.log('Finished writing!'); 
-
+          // resize image with Image Magick
+        im.crop({
+        srcPath: __dirname + '/uploadFolder/img/' + filename,
+        dstPath: __dirname + '/uploadFolder/img/cropped_' + filename,
+        width: 500,
+        height: 500,
+        quality: 1,
+        gravity: 'Center'
+        }, function(err, stdout, stderr){
+            if (err) throw err;
+            console.log('Image resized')
+        });
         //Get file stats (including size) for file saved to server
         fs.stat(__dirname + '/uploadFolder/img/' + filename, function(err, stats) {
             if(err) 
@@ -202,6 +212,8 @@ app.post('/upload',function (req, res, next) {
             //if a file
             if (stats.isFile()) {
                 //console.log("It\'s a file & stats.size= " + JSON.stringify(stats)); 
+                 
+                  
                 console.log("File size saved to server: " + stats.size);  
                 console.log("-----------------------");
             };
@@ -219,26 +231,7 @@ app.post('/upload',function (req, res, next) {
   });  //  @END/ POST
   
 
-
-  //PUT
-app.put('/upload',function (req, res, next) {
-
-      var fstream;
-      req.pipe(req.busboy);
-      req.busboy.on('file', function (fieldname, file, filename) {
-          console.log("Uploading: " + filename);
-
-          //Path where image will be uploaded
-          fstream = fs.createWriteStream(__dirname + '/img/' + filename);
-          file.pipe(fstream);
-
-          fstream.on('close', function () {
-              console.log("Upload Finished of " + filename);
-              res.redirect('back');       //where to go next
-          });
-      });
-  });
-
+ 
 
  
 
@@ -265,6 +258,21 @@ function ensureAuthenticated(req, res, next) {
 
 /*
  |--------------------------------------------------------------------------
+ | Admin Middleware
+ |--------------------------------------------------------------------------
+ */
+function ensureAdmin(req, res, next) {
+  dbProxy.User.find({ where: dbProxy.Sequelize.and({id: req.user },{isAdmin: true}) }).then(function(user) {
+    if(!user){
+      return res.status(401).send({ message: 'You need to be an admin to access this endpoint' });
+    }else{
+      next();
+    }
+  })
+}
+
+/*
+ |--------------------------------------------------------------------------
  | Generate JSON Web Token
  |--------------------------------------------------------------------------
  */
@@ -277,6 +285,20 @@ function createToken(user) {
   return jwt.encode(payload, config.TOKEN_SECRET);
 }
 
+
+/*
+ |--------------------------------------------------------------------------
+ | GET /companies/search/
+ |--------------------------------------------------------------------------
+ */
+app.get('/companies/search/:searchString', ensureAuthenticated, ensureAdmin, function(req, res) {
+  var searchString = req.params.searchString;
+  dbProxy.Company.find({ where: {displayName: searchString} }).then(function(companies) {
+    res.send(companies);
+  });
+});
+
+
 /*
  |--------------------------------------------------------------------------
  | GET /api/me
@@ -284,7 +306,7 @@ function createToken(user) {
  */
 app.get('/api/me', ensureAuthenticated, function(req, res) {
    
-  User.find({ where: {id: req.user} }).then(function(user) {
+  dbProxy.User.find({ where: {id: req.user} }).then(function(user) {
     
     res.send(user);
   });
@@ -296,7 +318,7 @@ app.get('/api/me', ensureAuthenticated, function(req, res) {
  |--------------------------------------------------------------------------
  */
 app.put('/api/me', ensureAuthenticated, function(req, res) {
-  User.find({ where: {id: req.user} }).then(function(user) {
+  dbProxy.User.find({ where: {id: req.user} }).then(function(user) {
     if (!user) {
       return res.status(400).send({ message: 'User not found' });
     }
@@ -316,7 +338,7 @@ app.put('/api/me', ensureAuthenticated, function(req, res) {
  */
 app.post('/auth/login', function(req, res) {
   
-  User.find({ where: {email: req.body.email} }).then(function(user) {
+  dbProxy.User.find({ where: {email: req.body.email} }).then(function(user) {
   // project will be the first entry of the Projects table with the title 'aProject' || null
     if (!user) {
       return res.status(401).send({ message: 'Wrong email and/or password' });
@@ -337,11 +359,11 @@ app.post('/auth/login', function(req, res) {
  |--------------------------------------------------------------------------
  */
 app.post('/auth/signup', function(req, res) {
-  User.find({ where: {email: req.body.email}}).then(function(existingUser) {
+    dbProxy.User.find({ where: {email: req.body.email}}).then(function(existingUser) {
     if (existingUser) {
       return res.status(409).send({ message: 'Email is already taken' });
     }
-    User.create({
+    dbProxy.User.create({
       email: req.body.email,
       password: req.body.password, 
       displayName: req.body.displayName,
@@ -377,13 +399,13 @@ app.post('/auth/google', function(req, res) {
 
       // Step 3a. Link user accounts.
       if (req.headers.authorization) {
-        User.findOne({ google: profile.sub }, function(err, existingUser) {
+        dbProxy.User.findOne({ google: profile.sub }, function(err, existingUser) {
           if (existingUser) {
             return res.status(409).send({ message: 'There is already a Google account that belongs to you' });
           }
           var token = req.headers.authorization.split(' ')[1];
           var payload = jwt.decode(token, config.TOKEN_SECRET);
-          User.findById(payload.sub, function(err, user) {
+          dbProxy.User.findById(payload.sub, function(err, user) {
             if (!user) {
               return res.status(400).send({ message: 'User not found' });
             }
@@ -397,7 +419,7 @@ app.post('/auth/google', function(req, res) {
         });
       } else {
         // Step 3b. Create a new user account or return an existing one.
-        User.findOne({ google: profile.sub }, function(err, existingUser) {
+        dbProxy.User.findOne({ google: profile.sub }, function(err, existingUser) {
           if (existingUser) {
             return res.send({ token: createToken(existingUser) });
           }
@@ -443,7 +465,7 @@ app.post('/auth/github', function(req, res) {
 
       // Step 3a. Link user accounts.
       if (req.headers.authorization) {
-        User.findOne({ github: profile.id }, function(err, existingUser) {
+        dbProxy.User.findOne({ github: profile.id }, function(err, existingUser) {
           if (existingUser) {
             return res.status(409).send({ message: 'There is already a GitHub account that belongs to you' });
           }
@@ -463,7 +485,7 @@ app.post('/auth/github', function(req, res) {
         });
       } else {
         // Step 3b. Create a new user account or return an existing one.
-        User.findOne({ github: profile.id }, function(err, existingUser) {
+        dbProxy.User.findOne({ github: profile.id }, function(err, existingUser) {
           if (existingUser) {
             var token = createToken(existingUser);
             return res.send({ token: token });
@@ -512,7 +534,7 @@ app.post('/auth/linkedin', function(req, res) {
 
       // Step 3a. Link user accounts.
       if (req.headers.authorization) {
-        User.findOne({ linkedin: profile.id }, function(err, existingUser) {
+        dbProxy.User.findOne({ linkedin: profile.id }, function(err, existingUser) {
           if (existingUser) {
             return res.status(409).send({ message: 'There is already a LinkedIn account that belongs to you' });
           }
@@ -532,7 +554,7 @@ app.post('/auth/linkedin', function(req, res) {
         });
       } else {
         // Step 3b. Create a new user account or return an existing one.
-        User.findOne({ linkedin: profile.id }, function(err, existingUser) {
+        dbProxy.User.findOne({ linkedin: profile.id }, function(err, existingUser) {
           if (existingUser) {
             return res.send({ token: createToken(existingUser) });
           }
@@ -653,7 +675,7 @@ app.post('/auth/facebook', function(req, res) {
           }
           var token = req.headers.authorization.split(' ')[1];
           var payload = jwt.decode(token, config.TOKEN_SECRET);
-          User.findById(payload.sub, function(err, user) {
+          dbProxy.User.findById(payload.sub, function(err, user) {
             if (!user) {
               return res.status(400).send({ message: 'User not found' });
             }
@@ -792,7 +814,7 @@ app.get('/auth/twitter', function(req, res) {
       // Step 4a. Link user accounts.
       if (req.headers.authorization) {
 
-        User.find({ where: {twitter: profile.user_id} }).then(function(existingUser) {
+        dbProxy.User.find({ where: {twitter: profile.user_id} }).then(function(existingUser) {
           if (existingUser) {
             return res.status(409).send({ message: 'There is already a Twitter account that belongs to you' });
           }
@@ -800,7 +822,7 @@ app.get('/auth/twitter', function(req, res) {
           var payload = jwt.decode(token, config.TOKEN_SECRET);
           console.log(profile)          
 
-          User.find({ where: {id: payload.sub} }).then(function(user){
+          dbProxy.User.find({ where: {id: payload.sub} }).then(function(user){
             if (!user) {
               return res.status(400).send({ message: 'Something went wrong in the linkage process' });
             }
@@ -818,13 +840,13 @@ app.get('/auth/twitter', function(req, res) {
             console.log("step 4b")
         // Step 4b. Create a new user account or return an existing one.
         // 
-        User.find({ where: {twitter: profile.user_id} }).then(function(existingUser) {
+        dbProxy.User.find({ where: {twitter: profile.user_id} }).then(function(existingUser) {
           if (existingUser) {
             var token = createToken(existingUser);
             return res.send({ token: token });
           }
           console.log(profile)
-          User.create({
+          dbProxy.User.create({
             twitter: profile.user_id,
             displayName: profile.screen_name
           }).success(function(user) {
@@ -914,7 +936,7 @@ app.post('/auth/foursquare', function(req, res) {
 app.get('/auth/unlink/:provider', ensureAuthenticated, function(req, res) {
   var provider = req.params.provider;
 
-  User.find({ where: {id: req.user} }).then(function(user) {
+  dbProxy.User.find({ where: {id: req.user} }).then(function(user) {
     if (!user) {
       return res.status(400).send({ message: 'User not found' });
     }
