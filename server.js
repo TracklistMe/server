@@ -298,6 +298,88 @@ app.get('/companies/search/:searchString', ensureAuthenticated, ensureAdmin, fun
   });
 });
 
+/*
+ |--------------------------------------------------------------------------
+ | GET /companies/   
+ | return List of all the companies
+ |--------------------------------------------------------------------------
+ */
+app.get('/companies/', ensureAuthenticated, ensureAdmin, function(req, res) {
+  var searchString = req.params.searchString;
+  dbProxy.Company.findAll().then(function(companies) {
+    res.send(companies);
+  });
+});
+
+/*
+ |--------------------------------------------------------------------------
+ | GET /companies/id   
+ | return The company with id passed as part of the path. Empty object if it doesn't exists.
+ | this function has been set to limited to admin only. We may consider at some point to release
+ | a lighter way for having an all user access (for promo proposal)
+ |--------------------------------------------------------------------------
+ */
+app.get('/companies/:id', ensureAuthenticated, ensureAdmin, function(req, res) {
+  console.log("catch")
+  var companyId = req.params.id;
+  dbProxy.Company.find({ where: {id: companyId} }).then(function(company) {
+    if(company){
+
+
+        company.getUsers({attributes: ['displayName']}).success(function(associatedUsers) {
+
+            company.dataValues.owners = (associatedUsers);
+            res.send(company);
+        })
+    }else{
+      res.send(company);
+    }
+  }); 
+});
+
+/*
+ |--------------------------------------------------------------------------
+ | POST /companies/   
+ | return List of all the companies
+ |--------------------------------------------------------------------------
+ */
+app.post('/companies/', ensureAuthenticated, ensureAdmin, function(req, res) {
+  var companyName = req.body.companyName;
+  dbProxy.Company.find({where: {displayName: companyName}}).then(function(company) {
+    if(!company){
+          dbProxy.Company.create({
+            displayName : companyName
+          }).success(function(company) {
+            res.send(company);
+          })  
+    }else{
+      // TODO, there were an error, need to fix
+    }
+  });
+}); 
+
+
+
+/*
+ |--------------------------------------------------------------------------
+ | USERS API
+ |--------------------------------------------------------------------------
+ */
+/*
+ |--------------------------------------------------------------------------
+ | GET /users/search/
+ |--------------------------------------------------------------------------
+ */
+app.get('/users/search/:searchString', ensureAuthenticated, ensureAdmin, function(req, res) {
+  var searchString = req.params.searchString;
+  dbProxy.User.findAll({ where: {displayName: searchString} }).then(function(users) {
+       console.log(users)
+    res.send(users);
+  });
+});
+
+
+
 
 /*
  |--------------------------------------------------------------------------
