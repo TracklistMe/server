@@ -324,10 +324,7 @@ app.get('/companies/:id', ensureAuthenticated, ensureAdmin, function(req, res) {
   var companyId = req.params.id;
   dbProxy.Company.find({ where: {id: companyId} }).then(function(company) {
     if(company){
-
-
         company.getUsers({attributes: ['displayName']}).success(function(associatedUsers) {
-
             company.dataValues.owners = (associatedUsers);
             res.send(company);
         })
@@ -336,7 +333,34 @@ app.get('/companies/:id', ensureAuthenticated, ensureAdmin, function(req, res) {
     }
   }); 
 });
+/*
+ |--------------------------------------------------------------------------
+ | POST /companies/:idCompany/owners/   POST {the id of owner to add}
+ | return List of all the companies
+ |--------------------------------------------------------------------------
+ */
+app.post('/companies/:companyId/owners', ensureAuthenticated, ensureAdmin, function(req, res) {
+  var newOwnerId = req.body.newOwner;
+  var companyId = req.params.companyId
+  console.log(newOwnerId+" == "+companyId)
+  dbProxy.Company.find({where: {id: companyId}}).then(function(company) {
+    company.getUsers({ where: {id: newOwnerId}}).success(function(users) {
+      if(users.length == 0){
+          dbProxy.User.find({where: {id: newOwnerId}}).then(function(user) {
+            company.addUsers(user).success(function() {
+              res.send();
+            })
+          })
+      }else{
+        
+        console.log("This user waas already associated to this company!")
+        // TODO, there were an error, need to fix
+      }
+    })
 
+    
+  });
+}); 
 /*
  |--------------------------------------------------------------------------
  | POST /companies/   
