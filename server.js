@@ -320,7 +320,6 @@ app.get('/companies/', ensureAuthenticated, ensureAdmin, function(req, res) {
  |--------------------------------------------------------------------------
  */
 app.get('/companies/:id', ensureAuthenticated, ensureAdmin, function(req, res) {
-  console.log("catch")
   var companyId = req.params.id;
   dbProxy.Company.find({ where: {id: companyId} }).then(function(company) {
     if(company){
@@ -335,6 +334,24 @@ app.get('/companies/:id', ensureAuthenticated, ensureAdmin, function(req, res) {
 });
 /*
  |--------------------------------------------------------------------------
+ | PUT /companies/id   
+ | return the update company
+ | update the companies with id 
+ |--------------------------------------------------------------------------
+ */
+app.put('/companies/:id', ensureAuthenticated, ensureAdmin, function(req, res) {
+  var companyId = req.params.id;
+
+  dbProxy.Company.find({where: {id: companyId} }).then(function(company) {
+    if (company) { // if the record exists in the db
+      company.updateAttributes(req.body).then(function(company) {
+        res.send();
+      });
+    }
+  })
+});
+/*
+ |--------------------------------------------------------------------------
  | POST /companies/:idCompany/owners/   POST {the id of owner to add}
  | return List of all the companies
  |--------------------------------------------------------------------------
@@ -342,6 +359,8 @@ app.get('/companies/:id', ensureAuthenticated, ensureAdmin, function(req, res) {
 app.post('/companies/:companyId/owners', ensureAuthenticated, ensureAdmin, function(req, res) {
   var newOwnerId = req.body.newOwner;
   var companyId = req.params.companyId
+
+  
   console.log(newOwnerId+" == "+companyId)
   dbProxy.Company.find({where: {id: companyId}}).then(function(company) {
     company.getUsers({ where: {id: newOwnerId}}).success(function(users) {
@@ -357,9 +376,30 @@ app.post('/companies/:companyId/owners', ensureAuthenticated, ensureAdmin, funct
         // TODO, there were an error, need to fix
       }
     })
-
-    
   });
+}); 
+/*
+ |--------------------------------------------------------------------------
+ | DELETE /companies/:idCompany/owners/:idUser 
+ | delete the owner idUser in the company idCompany
+ |--------------------------------------------------------------------------
+ */
+app.delete('/companies/:companyId/owners/:userId', ensureAuthenticated, ensureAdmin, function(req, res) {
+  var ownerId = req.params.userId;
+  var companyId = req.params.companyId
+
+
+  dbProxy.Company.find({where: {id: companyId}}).then(function(company) {
+    console.log("REMOVE  USER FROM COMPANY")
+    dbProxy.User.find({where: {id: ownerId}}).then(function(user) {
+            company.removeUser(user).success(function() {
+              res.send();
+            })
+          })
+     
+  });
+ 
+ 
 }); 
 /*
  |--------------------------------------------------------------------------
@@ -407,10 +447,10 @@ app.get('/users/search/:searchString', ensureAuthenticated, ensureAdmin, functio
 
 /*
  |--------------------------------------------------------------------------
- | GET /api/me
+ | GET /me
  |--------------------------------------------------------------------------
  */
-app.get('/api/me', ensureAuthenticated, function(req, res) {
+app.get('/me', ensureAuthenticated, function(req, res) {
    
   dbProxy.User.find({ where: {id: req.user} }).then(function(user) {
     
@@ -420,10 +460,56 @@ app.get('/api/me', ensureAuthenticated, function(req, res) {
 
 /*
  |--------------------------------------------------------------------------
+ | GET /me/companies/
+ | Get all the companies of an autenticated account
+ |--------------------------------------------------------------------------
+ */
+app.get('/me/companies', ensureAuthenticated, function(req, res) {
+   
+   dbProxy.User.find({where: {id: req.user}}).then(function(user) {
+    if(user.isAdmin){
+      dbProxy.Company.findAll().success(function(companies) { 
+        res.send(companies);
+      })
+    } else {
+      user.getCompanies().success(function(companies) { 
+        res.send(companies);
+      })
+    }
+       
+    })
+});
+
+/*
+ |--------------------------------------------------------------------------
+ | GET /me/labels/
+ | Get all the companies of an autenticated account
+ |--------------------------------------------------------------------------
+ */
+app.get('/me/labels', ensureAuthenticated, function(req, res) {
+   
+   dbProxy.User.find({where: {id: req.user}}).then(function(user) {
+    if(user.isAdmin){
+      dbProxy.Label.findAll().success(function(labels) { 
+        res.send(labels);
+      })
+    } else {
+      user.getLabels().success(function(labels) { 
+        res.send(labels);
+      })
+    }
+       
+    })
+});
+
+
+
+/*
+ |--------------------------------------------------------------------------
  | PUT /api/me
  |--------------------------------------------------------------------------
  */
-app.put('/api/me', ensureAuthenticated, function(req, res) {
+app.put('/me', ensureAuthenticated, function(req, res) {
   dbProxy.User.find({ where: {id: req.user} }).then(function(user) {
     if (!user) {
       return res.status(400).send({ message: 'User not found' });
