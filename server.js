@@ -125,7 +125,6 @@ app.use('/images', express.static(__dirname + '/uploadFolder/img/'));
 
 
 app.post('/upload', ensureAuthenticated, function (req, res, next) {
-
     console.log("USER"+req.user)
     var arr;
     var fstream;
@@ -153,42 +152,33 @@ app.post('/upload', ensureAuthenticated, function (req, res, next) {
     var extension = filename.split('.').slice(0).pop(),
     filename = filename.replace(extension, '').replace(/\W+/g, '') + "." + extension;
     filename = req.user+"_"+Date.now()+"_"+filename;
-    
-    
-     
-
-
+   
     //populate array
     //I am collecting file info in data read about the file. It may be more correct to read 
     //file data after the file has been saved to img folder i.e. after file.pipe(stream) completes
     //the file size can be got using stats.size as shown below
     arr= [{fieldname: fieldname, filename: filename, encoding: encoding, MIMEtype: mimetype}];
-    
     //save files in the form of userID + timestamp + filenameSanitized
-    
-
- 
-
-          //Path where image will be uploaded
+    //Path where image will be uploaded
     fstream = fs.createWriteStream(__dirname + '/uploadFolder/img/' + filename); //create a writable stream
     file.pipe(fstream);   //pipe the post data to the file
 
    
 
     //stream Ended - (data written) send the post response
-      req.on('end', function () {
-        dbProxy.User.find({ where: {id: req.user} }).then(function(user) {
-          user.avatar = 'cropped_' +filename,
-          user.save(function(){
-                         //http response body - send json data
-          });
-          res.writeHead(200, {"content-type":"text/html"});   //http response header
-          res.end(JSON.stringify(arr)); 
-            
+    req.on('end', function () {
+      dbProxy.User.find({ where: {id: req.user} }).then(function(user) {
+        user.avatar = 'cropped_' +filename,
+        user.save(function(){
+                       //http response body - send json data
         });
-
-        
+        res.writeHead(200, {"content-type":"text/html"});   //http response header
+        res.end(JSON.stringify(arr)); 
+          
       });
+
+      
+    });
 
     //Finished writing to stream
     fstream.on('finish', function () { 
@@ -222,9 +212,9 @@ app.post('/upload', ensureAuthenticated, function (req, res, next) {
 
 
         // error
-        fstream.on('error', function (err) {
-          console.log(err);
-        });
+    fstream.on('error', function (err) {
+      console.log(err);
+    });
 
     
     });  // @END/ .req.busboy
@@ -232,6 +222,104 @@ app.post('/upload', ensureAuthenticated, function (req, res, next) {
   
 
  
+
+
+
+
+/*
+ |--------------------------------------------------------------------------
+ | Upload Function
+ |--------------------------------------------------------------------------
+ */
+
+function upload(req,res,next){
+    var arr;
+    var fstream;
+    var filesize = 0;
+    req.pipe(req.busboy);
+
+      //--------------------------------------------------------------------------
+    req.busboy.on('file', function (fieldname, file, filename, encoding, mimetype) {
+      //uploaded file name, encoding, MIME type
+      console.log('File [' + fieldname +']: filename:' + filename + ', encoding:' + encoding + ', MIME type:'+ mimetype);
+      //uploaded file size
+      file.on('data', function(data) {
+      //console.log('File [' + fieldname + '] got ' + data.length + ' bytes');
+      fileSize = data.length;
+      //console.log("fileSize= " + fileSize);
+    });
+
+    file.on('end', function() {
+      console.log('File [' + fieldname + '] ENDed');
+      console.log("-------------------------");
+    });
+    if (!Date.now) {
+        Date.now = function() { return new Date().getTime(); }
+    }
+    var extension = filename.split('.').slice(0).pop(),
+    filename = filename.replace(extension, '').replace(/\W+/g, '') + "." + extension;
+    filename = req.user+"_"+Date.now()+"_"+filename;
+   
+    //populate array
+    //I am collecting file info in data read about the file. It may be more correct to read 
+    //file data after the file has been saved to img folder i.e. after file.pipe(stream) completes
+    //the file size can be got using stats.size as shown below
+    arr= [{fieldname: fieldname, filename: filename, encoding: encoding, MIMEtype: mimetype}];
+    //save files in the form of userID + timestamp + filenameSanitized
+    //Path where image will be uploaded
+    fstream = fs.createWriteStream(__dirname + '/uploadFolder/img/' + filename); //create a writable stream
+    file.pipe(fstream);   //pipe the post data to the file
+
+   
+
+    //stream Ended - (data written) send the post response
+    req.on('end', function () {
+      req.user = 'cropped_' +filename;
+      next();
+    });
+
+    //Finished writing to stream
+    fstream.on('finish', function () { 
+      console.log('Finished writing!'); 
+          // resize image with Image Magick
+        im.crop({
+        srcPath: __dirname + '/uploadFolder/img/' + filename,
+        dstPath: __dirname + '/uploadFolder/img/cropped_' + filename,
+        width: 500,
+        height: 500,
+        quality: 1,
+        gravity: 'Center'
+        }, function(err, stdout, stderr){
+            if (err) throw err;
+            console.log('Image resized')
+        });
+        //Get file stats (including size) for file saved to server
+        fs.stat(__dirname + '/uploadFolder/img/' + filename, function(err, stats) {
+            if(err) 
+              throw err;      
+            //if a file
+            if (stats.isFile()) {
+                //console.log("It\'s a file & stats.size= " + JSON.stringify(stats)); 
+                 
+                  
+                console.log("File size saved to server: " + stats.size);  
+                console.log("-----------------------");
+            };
+          });
+    });
+
+
+        // error
+    fstream.on('error', function (err) {
+      console.log(err);
+    });
+
+    
+    });  // @END/ .req.busboy
+
+
+}
+
 
  
 
@@ -310,6 +398,28 @@ app.get('/companies/', ensureAuthenticated, ensureAdmin, function(req, res) {
     res.send(companies);
   });
 });
+
+
+/*
+ |--------------------------------------------------------------------------
+ | GET /companies/id/labels   
+ | return all the companies of the given company
+ |--------------------------------------------------------------------------
+ */
+app.get('/companies/:id/labels', ensureAuthenticated, ensureAdmin, function(req, res) {
+  var companyId = req.params.id;
+  dbProxy.Company.find({ where: {id: companyId} }).then(function(company) {
+    if(company){
+        company.getLabels().success(function(associatedLabels) {
+            res.send(associatedLabels);
+        })
+    }else{
+      res.send(company);
+    }
+  }); 
+});
+
+
 
 /*
  |--------------------------------------------------------------------------
@@ -421,6 +531,126 @@ app.post('/companies/', ensureAuthenticated, ensureAdmin, function(req, res) {
     }
   });
 }); 
+
+
+/*
+ |--------------------------------------------------------------------------
+ | LABELS API
+ |--------------------------------------------------------------------------
+ |--------------------------------------------------------------------------
+ | GET /labels/search/
+ |--------------------------------------------------------------------------
+ */
+app.get('/labels/search/:searchString', ensureAuthenticated, ensureAdmin, function(req, res) {
+  var searchString = req.params.searchString;
+  dbProxy.Label.find({ where: {displayName: searchString} }).then(function(labels) {
+    res.send(labels);
+  });
+});
+
+
+/*
+ |--------------------------------------------------------------------------
+ | GET /labels/id   
+ | return The company with id passed as part of the path. Empty object if it doesn't exists.
+ | this function has been set to limited to admin only. We may consider at some point to release
+ | a lighter way for having an all user access (for promo proposal)
+ |--------------------------------------------------------------------------
+ */
+
+app.get('/labels/:id', ensureAuthenticated, function(req, res) {
+  var LabelId = req.params.id;
+  dbProxy.Label.find({ where: {id: LabelId} }).then(function(label) {
+    if(label){
+        label.getUsers({attributes: ['displayName']}).success(function(associatedUsers) {
+            label.dataValues.labelManagers = (associatedUsers);
+            res.send(label);
+        })
+    }else{
+      res.send(label);
+    }
+  }); 
+});
+
+/*
+ |--------------------------------------------------------------------------
+ | POST /labels/ add label in post payload to the label list of the company 
+ | return List of all the companies
+ |--------------------------------------------------------------------------
+ */
+app.post('/labels/', ensureAuthenticated, function(req, res) {
+  var companyId = req.body.companyId;
+  var labelName = req.body.labelName;
+
+  dbProxy.Label.find({ where: {displayName: labelName}}).success(function(label) {
+    if(!label){
+       dbProxy.Label.create({
+            displayName: labelName
+          }).success(function(label) {
+                dbProxy.Company.find({where: {id: companyId}}).then(function(company) {
+                  company.setLabels([label]).success(function(labels) {
+                            res.send();
+                         
+                });
+              })  
+          })
+    }
+  });
+}); 
+
+/*
+ |--------------------------------------------------------------------------
+ | POST /labels/:idLabel/labelManagers/   POST {the id of owner to add}
+ | return List of all the companies
+ |--------------------------------------------------------------------------
+ */
+app.post('/labels/:labelId/labelManagers', ensureAuthenticated, ensureAdmin, function(req, res) {
+  var newLabelManagerId = req.body.newLabelManager;
+  var labelId = req.params.labelId
+ 
+  dbProxy.Label.find({where: {id: labelId}}).then(function(label) {
+    label.getUsers({ where: {id: newLabelManagerId}}).then(function(users) {
+
+      if(users.length == 0){
+          dbProxy.User.find({where: {id: newLabelManagerId}}).then(function(user) {
+            label.addUsers(user).then(function(label) {
+        
+              res.send();
+            })
+          })
+      }else{
+        
+        console.log("This user was already associated to this label!")
+        // TODO, there were an error, need to fix
+      }
+    })
+  });
+}); 
+
+/*
+ |--------------------------------------------------------------------------
+ | DELETE /labels/:idLabels/labelManagers/:idUser 
+ | delete the owner idUser in the company idCompany
+ |--------------------------------------------------------------------------
+ */
+app.delete('/labels/:labelId/labelManagers/:userId', ensureAuthenticated, ensureAdmin, function(req, res) {
+  var userId = req.params.userId;
+  var labelId = req.params.labelId
+
+
+  dbProxy.Label.find({where: {id: labelId}}).then(function(label) {
+    dbProxy.User.find({where: {id: userId}}).then(function(user) {
+            label.removeUser(user).success(function() {
+              res.send();
+            })
+          })
+     
+  });
+ 
+ 
+}); 
+
+
 
 
 
