@@ -124,15 +124,13 @@ app.use(busboy());
 app.use('/images', express.static(__dirname + '/uploadFolder/img/'));
 
 app.post('/upload/profilePicture/:width/:height/', ensureAuthenticated, upload, resize, function (req, res, next) {
-
       dbProxy.User.find({ where: {id: req.user} }).then(function(user) {
-      
         user.avatar = req.uploadedPicture[0].filename;
         user.save(function(){
-                       //http response body - send json data
+             
         });
-        res.writeHead(200, {"content-type":"text/html"});   //http response header
-        res.end(JSON.stringify(req.uploadedPicture)); 
+      res.writeHead(200, {"content-type":"text/html"});   //http response header
+      res.end(JSON.stringify(req.uploadedPicture)); 
       });
   });  //  @END/ POST
   
@@ -234,7 +232,6 @@ function upload(req,res,next){
 
 function resize(req,res,next){
   var newFileName,filename = req.uploadedPicture[0].filename
-  console.log("*******PARAMS********")
   var width = req.params.width
   var height = req.params.height
   if(!width) width = height
@@ -429,6 +426,27 @@ app.post('/companies/:companyId/owners', ensureAuthenticated, ensureAdmin, funct
     })
   });
 }); 
+
+/*
+ |--------------------------------------------------------------------------
+ | POST /companies/:idCompany/profilePicture/:width/:height   POST {the id of owner to add}
+ | return List of all the companies
+ |--------------------------------------------------------------------------
+ */
+
+app.post('/companies/:idCompany/profilePicture/:width/:height/', ensureAuthenticated, upload, resize, function (req, res, next) {
+      var idCompany = req.params.idCompany;
+      dbProxy.Company.find({ where: {id: idCompany} }).then(function(company) {
+        company.logo = req.uploadedPicture[0].filename;
+          company.save(function(){   
+          });
+      });
+      res.send();
+});
+
+
+
+
 /*
  |--------------------------------------------------------------------------
  | DELETE /companies/:idCompany/owners/:idUser 
@@ -542,6 +560,49 @@ app.post('/labels/', ensureAuthenticated, function(req, res) {
   });
 }); 
 
+
+/*
+ |--------------------------------------------------------------------------
+ | POST /labels/:idLabel/profilePicture/:width/:height   POST {the avatar picture}
+ | return TBD
+ |--------------------------------------------------------------------------
+ */
+
+app.post('/labels/:idLabel/profilePicture/:width/:height/', ensureAuthenticated, upload, resize, function (req, res, next) {
+      var idLabel = req.params.idLabel;
+      dbProxy.Label.find({ where: {id: idLabel} }).then(function(label) {
+        label.logo = req.uploadedPicture[0].filename;
+          label.save().success(function() { 
+            res.send();
+          })
+      });
+       
+});
+
+
+/*
+ |--------------------------------------------------------------------------
+ | POST /labels/:idLabel/dropZone   POST {multiple data to upload picture}
+ | return TBD
+ |--------------------------------------------------------------------------
+ */
+
+app.post('/labels/:idLabel/dropZone/', ensureAuthenticated, upload, function (req, res, next) {
+      var idLabel = req.params.idLabel;
+      /*
+      dbProxy.Label.find({ where: {id: idLabel} }).then(function(label) {
+        label.logo = req.uploadedPicture[0].filename;
+          label.save().success(function() { 
+            res.send();
+          })
+      });
+      */
+     
+     res.send();
+});
+
+
+
 /*
  |--------------------------------------------------------------------------
  | POST /labels/:idLabel/labelManagers/   POST {the id of owner to add}
@@ -551,8 +612,10 @@ app.post('/labels/', ensureAuthenticated, function(req, res) {
 app.post('/labels/:labelId/labelManagers', ensureAuthenticated, ensureAdmin, function(req, res) {
   var newLabelManagerId = req.body.newLabelManager;
   var labelId = req.params.labelId
+  console.log(labelId);
  
   dbProxy.Label.find({where: {id: labelId}}).then(function(label) {
+
     label.getUsers({ where: {id: newLabelManagerId}}).then(function(users) {
 
       if(users.length == 0){
