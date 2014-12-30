@@ -19,7 +19,7 @@ var jwt = require('jwt-simple');
 var moment = require('moment');
 var mongoose = require('mongoose');
 var request = require('request');
-
+var beatportValidate = require('libs/beatport/beatportValidator')
 var multipart = require('connect-multiparty');
 var im = require('imagemagick');
 
@@ -125,12 +125,11 @@ app.use('/images', express.static(__dirname + '/uploadFolder/img/'));
 
 app.post('/upload/profilePicture/:width/:height/', ensureAuthenticated, upload, resize, function (req, res, next) {
       dbProxy.User.find({ where: {id: req.user} }).then(function(user) {
-        user.avatar = req.uploadedPicture[0].filename;
+        user.avatar = req.uploadedFile[0].filename;
         user.save(function(){
-             
         });
       res.writeHead(200, {"content-type":"text/html"});   //http response header
-      res.end(JSON.stringify(req.uploadedPicture)); 
+      res.end(JSON.stringify(req.uploadedFile)); 
       });
   });  //  @END/ POST
   
@@ -150,7 +149,7 @@ function upload(req,res,next){
      
     var arr;
     var fstream;
-    var filesize = 0;
+    var fileSize = 0;
     req.pipe(req.busboy);
 
       //--------------------------------------------------------------------------
@@ -160,8 +159,7 @@ function upload(req,res,next){
       //uploaded file size
       file.on('data', function(data) {
       //console.log('File [' + fieldname + '] got ' + data.length + ' bytes');
-      fileSize = data.length;
-      //console.log("fileSize= " + fileSize);
+      
     });
 
  
@@ -173,6 +171,7 @@ function upload(req,res,next){
     if (!Date.now) {
         Date.now = function() { return new Date().getTime(); }
     }
+    var originalfilename = filename.split('.')[0];
     var extension = filename.split('.').slice(0).pop(),
     filename = filename.replace(extension, '').replace(/\W+/g, '') + "." + extension;
     filename = req.user+"_"+Date.now()+"_"+filename;
@@ -182,7 +181,7 @@ function upload(req,res,next){
     //I am collecting file info in data read about the file. It may be more correct to read 
     //file data after the file has been saved to img folder i.e. after file.pipe(stream) completes
     //the file size can be got using stats.size as shown below
-    arr= [{fieldname: fieldname, filename: filename, encoding: encoding, MIMEtype: mimetype}];
+    arr= [{originalfilename:originalfilename, extension: extension,filesize: fileSize, fieldname: fieldname, filename: filename, encoding: encoding, MIMEtype: mimetype}];
     //save files in the form of userID + timestamp + filenameSanitized
     //Path where image will be uploaded
     fstream = fs.createWriteStream(__dirname + '/uploadFolder/img/' + filename); //create a writable stream
@@ -191,18 +190,12 @@ function upload(req,res,next){
    
 
     //stream Ended - (data written) send the post response
-    req.on('end', function () {
-      
-      req.uploadedPicture = arr;
-     
+    req.on('end', function () {      
+      req.uploadedFile = arr;
     });
 
     //Finished writing to stream
     fstream.on('finish', function () { 
-    
-
-       
-
         //Get file stats (including size) for file saved to server
         fs.stat(__dirname + '/uploadFolder/img/' + filename, function(err, stats) {
             if(err) 
@@ -212,9 +205,10 @@ function upload(req,res,next){
                 //console.log("It\'s a file & stats.size= " + JSON.stringify(stats)); 
                  
                   
-                console.log("File size saved to server: " + stats.size);  
+                console.log("File size saved to server: " + stats.size); 
+                req.uploadedFile[0].filesize = stats.size; 
                 console.log("-----------------------");
-                 next();
+                next();
             };
           });
     });
@@ -231,7 +225,7 @@ function upload(req,res,next){
 
 
 function resize(req,res,next){
-  var newFileName,filename = req.uploadedPicture[0].filename
+  var newFileName,filename = req.uploadedFile[0].filename
   var width = req.params.width
   var height = req.params.height
   if(!width) width = height
@@ -253,8 +247,8 @@ function resize(req,res,next){
         });
   }
 
-  req.uploadedPicture[0].filename = newFileName;
-  console.log(req.uploadedPicture[0].filename)
+  req.uploadedFile[0].filename = newFileName;
+  console.log(req.uploadedFile[0].filename)
    
 
 }
@@ -437,7 +431,7 @@ app.post('/companies/:companyId/owners', ensureAuthenticated, ensureAdmin, funct
 app.post('/companies/:idCompany/profilePicture/:width/:height/', ensureAuthenticated, upload, resize, function (req, res, next) {
       var idCompany = req.params.idCompany;
       dbProxy.Company.find({ where: {id: idCompany} }).then(function(company) {
-        company.logo = req.uploadedPicture[0].filename;
+        company.logo = req.uploadedFile[0].filename;
           company.save(function(){   
           });
       });
@@ -571,7 +565,7 @@ app.post('/labels/', ensureAuthenticated, function(req, res) {
 app.post('/labels/:idLabel/profilePicture/:width/:height/', ensureAuthenticated, upload, resize, function (req, res, next) {
       var idLabel = req.params.idLabel;
       dbProxy.Label.find({ where: {id: idLabel} }).then(function(label) {
-        label.logo = req.uploadedPicture[0].filename;
+        label.logo = req.uploadedFile[0].filename;
           label.save().success(function() { 
             res.send();
           })
@@ -589,16 +583,58 @@ app.post('/labels/:idLabel/profilePicture/:width/:height/', ensureAuthenticated,
 
 app.post('/labels/:idLabel/dropZone/', ensureAuthenticated, upload, function (req, res, next) {
       var idLabel = req.params.idLabel;
-      /*
-      dbProxy.Label.find({ where: {id: idLabel} }).then(function(label) {
-        label.logo = req.uploadedPicture[0].filename;
-          label.save().success(function() { 
+      console.log("****************")
+      console.log(req.uploadedFile) 
+      console.log("****************")
+      res.send(req.uploadedFile);
+
+
+        // orginalfilename:originalfilename, extension: extension,
+     
+      dbProxy.DropZoneFile.find({ where: dbProxy.Sequelize.and({fileName: req.uploadedFile[0].originalfilename},{extension: req.uploadedFile[0].extension} ) }).then(function(file) {
+        if(file){
+          // file exists .. Update file? 
+          file.path = req.uploadedFile[0].filename;
+          file.size = req.uploadedFile[0].filesize;
+          file.save().success(function() { 
             res.send();
           })
+        }else{
+          dbProxy.DropZoneFile.create({
+            fileName: req.uploadedFile[0].originalfilename,
+            extension: req.uploadedFile[0].extension, 
+            size: req.uploadedFile[0].filesize,
+            path: req.uploadedFile[0].filename,
+          }).success(function(dropZoneFile) {
+            dbProxy.Label.find({ where: {id: idLabel}}).then(function(label){
+              label.addDropZoneFiles(dropZoneFile).then(function(associationFile) {
+                res.send();
+              })
+            });
+            
+          })  
+        }
+         
       });
-      */
-     
-     res.send();
+     //res.send();
+});
+
+/*
+ |--------------------------------------------------------------------------
+ | GET /labels/:idLabel/processReleases
+ |--------------------------------------------------------------------------
+ */
+app.get('/labels/:idLabel/processReleases/info', ensureAuthenticated, ensureAdmin, function(req, res) {
+    var idLabel = req.params.idLabel;
+    dbProxy.Label.find({ where: {id: idLabel}}).then(function(label){
+       label.getDropZoneFiles({where: {extension: "xml"}}).then(function(xmls){
+          beatportValidate.validate(xmls).then(function(results)){
+            res.send(results);
+          }
+           
+        })
+
+    })
 });
 
 
@@ -633,6 +669,29 @@ app.post('/labels/:labelId/labelManagers', ensureAuthenticated, ensureAdmin, fun
     })
   });
 }); 
+
+
+/*
+ |--------------------------------------------------------------------------
+ | GET /labels/id/dropZoneFiles  
+ | return The company with id passed as part of the path. Empty object if it doesn't exists.
+ | this function has been set to limited to admin only. We may consider at some point to release
+ | a lighter way for having an all user access (for promo proposal)
+ |--------------------------------------------------------------------------
+ */
+
+app.get('/labels/:id/dropZoneFiles', ensureAuthenticated, function(req, res) {
+  var LabelId = req.params.id;
+  dbProxy.Label.find({ where: {id: LabelId} }).then(function(label) {
+    if(label){
+        label.getDropZoneFiles().success(function(dropZoneFiles) {
+            res.send(dropZoneFiles);
+        })
+    }
+  }); 
+});
+
+
 
 /*
  |--------------------------------------------------------------------------
