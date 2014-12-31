@@ -19,7 +19,7 @@ var jwt = require('jwt-simple');
 var moment = require('moment');
 var mongoose = require('mongoose');
 var request = require('request');
-var beatportValidate = require('libs/beatport/beatportValidator')
+var beatportValidate = require('libs/beatport/beatportProxy')
 var multipart = require('connect-multiparty');
 var im = require('imagemagick');
 
@@ -628,9 +628,9 @@ app.get('/labels/:idLabel/processReleases/info', ensureAuthenticated, ensureAdmi
     var idLabel = req.params.idLabel;
     dbProxy.Label.find({ where: {id: idLabel}}).then(function(label){
        label.getDropZoneFiles({where: {extension: "xml"}}).then(function(xmls){
-          beatportValidate.validate(xmls).then(function(results)){
+          beatportValidate.validate(xmls).then(function(results){
             res.send(results);
-          }
+          })
            
         })
 
