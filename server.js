@@ -123,6 +123,32 @@ app.use(busboy());
 
 app.use('/images', express.static(__dirname + '/uploadFolder/img/'));
 
+ 
+
+//app.use('/cover/', express.static(__dirname + '/../datastore'));
+ 
+app.get('/cover/:labelId/:releaseNumber/:image', function(req, res) {
+  var mimeTypes = {
+    "jpeg": "image/jpeg",
+    "jpg": "image/jpeg",
+    "png": "image/png"
+  };
+  var labelId = req.params.labelId;
+  var releaseNumber = req.params.releaseNumber;
+  var image = req.params.image;
+  console.log(__dirname + '/../../datastore/'+labelId+"/"+releaseNumber+"/"+image);
+ 
+  var mimeType = mimeTypes[path.extname(image).split(".")[1]];
+  res.writeHead(200, {'Content-Type':mimeType});
+  var fileStream = fs.createReadStream(__dirname + '/../../datastore/'+labelId+"/"+releaseNumber+"/"+image);
+  fileStream.pipe(res);
+
+});
+ 
+ 
+
+
+
 app.post('/upload/profilePicture/:width/:height/', ensureAuthenticated, upload, resize, function (req, res, next) {
       dbProxy.User.find({ where: {id: req.user} }).then(function(user) {
         user.avatar = req.uploadedFile[0].filename;
@@ -433,9 +459,10 @@ app.post('/companies/:idCompany/profilePicture/:width/:height/', ensureAuthentic
       dbProxy.Company.find({ where: {id: idCompany} }).then(function(company) {
         company.logo = req.uploadedFile[0].filename;
           company.save(function(){   
+            res.send();
           });
       });
-      res.send();
+      
 });
 
 
@@ -586,7 +613,7 @@ app.post('/labels/:idLabel/dropZone/', ensureAuthenticated, upload, function (re
       console.log("****************")
       console.log(req.uploadedFile) 
       console.log("****************")
-      res.send(req.uploadedFile);
+       
 
 
         // orginalfilename:originalfilename, extension: extension,
@@ -621,7 +648,7 @@ app.post('/labels/:idLabel/dropZone/', ensureAuthenticated, upload, function (re
 
 /*
  |--------------------------------------------------------------------------
- | GET /labels/:idLabel/processReleases
+ | GET /labels/:idLabel/processReleases/info
  |--------------------------------------------------------------------------
  */
 app.get('/labels/:idLabel/processReleases/info', ensureAuthenticated, ensureAdmin, function(req, res) {
@@ -636,6 +663,26 @@ app.get('/labels/:idLabel/processReleases/info', ensureAuthenticated, ensureAdmi
 
     })
 });
+
+/*
+ |--------------------------------------------------------------------------
+ | GET /labels/:idLabel/processReleases/
+ |--------------------------------------------------------------------------
+ */
+app.post('/labels/:idLabel/processReleases/', ensureAuthenticated, ensureAdmin, function(req, res) {
+    var idLabel = req.params.idLabel;
+    dbProxy.Label.find({ where: {id: idLabel}}).then(function(label){
+       label.getDropZoneFiles({where: {extension: "xml"}}).then(function(xmls){
+          beatportValidate.process(xmls,idLabel).then(function(results){
+            console.log("--server response")
+            res.send(results);
+          })
+           
+        })
+
+    })
+});
+
 
 
 
@@ -686,6 +733,27 @@ app.get('/labels/:id/dropZoneFiles', ensureAuthenticated, function(req, res) {
     if(label){
         label.getDropZoneFiles().success(function(dropZoneFiles) {
             res.send(dropZoneFiles);
+        })
+    }
+  }); 
+});
+
+
+/*
+ |--------------------------------------------------------------------------
+ | GET /labels/id/catalog
+ | return The company with id passed as part of the path. Empty object if it doesn't exists.
+ | this function has been set to limited to admin only. We may consider at some point to release
+ | a lighter way for having an all user access (for promo proposal)
+ |--------------------------------------------------------------------------
+ */
+
+app.get('/labels/:id/catalog', ensureAuthenticated, function(req, res) {
+  var LabelId = req.params.id;
+  dbProxy.Label.find({ where: {id: LabelId} }).then(function(label) {
+    if(label){
+        label.getReleases().success(function(releases) {
+            res.send(releases);
         })
     }
   }); 
