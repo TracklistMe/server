@@ -27,10 +27,7 @@ var im = require('imagemagick');
 
 var dbProxy = require('libs/database/databaseProxy');
 
-
-
-
- 
+console.log(process.env.HOST)
 
 /*
 User.beforeCreate(function(user, fn) {
@@ -86,7 +83,14 @@ mongoose.connect(config.MONGO_URI);
 
 
 var app = express();
-
+var hostname;
+console.log(process.env.HOST)
+if(process.env.HOST == 'undefined'){
+  hostname = 'staging.tracklist.me'
+} else {
+  hostname = process.env.HOST;
+} 
+ 
 app.set('port', process.env.PORT || 3000);
 app.use(logger('dev'));
 app.use(bodyParser.json());
@@ -94,7 +98,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(function (req, res, next) {
 
     // Website you wish to allow to connect
-    res.setHeader('Access-Control-Allow-Origin', 'http://localhost:9000');
+    res.setHeader('Access-Control-Allow-Origin', 'http://'+hostname+':9000');
     // Request methods you wish to allow
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
 
