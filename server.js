@@ -809,7 +809,7 @@ app.get('/releases/:id', ensureAuthenticated, ensureAdmin, function(req, res) {
       {model: dbProxy.Track, include: [
         {model: dbProxy.Artist, as: 'Remixer'},
         {model: dbProxy.Artist, as: 'Producer'}
-      ]}
+      ]},{model: dbProxy.Label}
     ]
 
 
@@ -819,6 +819,24 @@ app.get('/releases/:id', ensureAuthenticated, ensureAdmin, function(req, res) {
   });
 });
 
+
+/*
+ |--------------------------------------------------------------------------
+ | ARTIST API
+ |--------------------------------------------------------------------------
+ */
+/*
+ |--------------------------------------------------------------------------
+ | GET /releases/:id   
+ | return List of all the companies
+ |--------------------------------------------------------------------------
+ */
+app.get('/artists/search/:searchString', ensureAuthenticated, ensureAdmin, function(req, res) {
+  var searchString = req.params.searchString;
+  dbProxy.Artist.findAll({ where: {displayName: searchString} }).then(function(artists) {
+    res.send(artists);
+  });
+});
 
 
 
