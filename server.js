@@ -827,7 +827,7 @@ app.get('/releases/:id', ensureAuthenticated, ensureAdmin, function(req, res) {
  */
 /*
  |--------------------------------------------------------------------------
- | GET /releases/:id   
+ | GET /artists/:id   
  | return List of all the companies
  |--------------------------------------------------------------------------
  */
@@ -837,6 +837,58 @@ app.get('/artists/search/:searchString', ensureAuthenticated, ensureAdmin, funct
     res.send(artists);
   });
 });
+
+/*
+ |--------------------------------------------------------------------------
+ | Post /artists/
+ |--------------------------------------------------------------------------
+ */
+app.post('/artists/', ensureAuthenticated, ensureAdmin, function(req, res) {
+  var artistName = req.body.displayName;
+  
+  dbProxy.Artist.find({ where: {displayName: artistName} }).then(function(artist) {
+       if(!artist){
+          dbProxy.Artist.create({
+            displayName: artistName
+          }).success(function(newArtist) {
+            artist = newArtist;
+          })  
+       }
+       res.send(artist);
+  });
+});
+
+/*
+ |--------------------------------------------------------------------------
+ | POST /companies/:idCompany/owners/   POST {the id of owner to add}
+ | return List of all the companies
+ |--------------------------------------------------------------------------
+ */
+app.post('/companies/:companyId/owners', ensureAuthenticated, ensureAdmin, function(req, res) {
+  var newOwnerId = req.body.newOwner;
+  var companyId = req.params.companyId
+
+  
+  console.log(newOwnerId+" == "+companyId)
+  dbProxy.Company.find({where: {id: companyId}}).then(function(company) {
+    company.getUsers({ where: {id: newOwnerId}}).success(function(users) {
+      if(users.length == 0){
+          dbProxy.User.find({where: {id: newOwnerId}}).then(function(user) {
+            company.addUsers(user).success(function() {
+              res.send();
+            })
+          })
+      }else{
+        
+        console.log("This user waas already associated to this company!")
+        // TODO, there were an error, need to fix
+      }
+    })
+  });
+}); 
+
+
+
 
 
 
@@ -858,6 +910,9 @@ app.get('/users/search/:searchString', ensureAuthenticated, ensureAdmin, functio
     res.send(users);
   });
 });
+
+
+
 
 
 
