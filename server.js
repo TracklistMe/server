@@ -789,6 +789,37 @@ app.delete('/labels/:labelId/labelManagers/:userId', ensureAuthenticated, ensure
 }); 
 
 
+/*
+ |--------------------------------------------------------------------------
+ | RELEASE API
+ |--------------------------------------------------------------------------
+ */
+/*
+ |--------------------------------------------------------------------------
+ | GET /releases/:id   
+ | return List of all the companies
+ |--------------------------------------------------------------------------
+ */
+app.get('/releases/:id', ensureAuthenticated, ensureAdmin, function(req, res) {
+  var releaseId = req.params.id
+
+   
+  dbProxy.Release.find({where: {id:releaseId},
+     include: [
+      {model: dbProxy.Track, include: [
+        {model: dbProxy.Artist, as: 'Remixer'},
+        {model: dbProxy.Artist, as: 'Producer'}
+      ]}
+    ]
+
+
+    }).then(function(release) {
+    console.log(release)
+    res.send(release);
+  });
+});
+
+
 
 
 
