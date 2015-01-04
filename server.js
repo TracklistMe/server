@@ -22,7 +22,7 @@ var request = require('request');
 var beatportValidate = require('libs/beatport/beatportProxy')
 var multipart = require('connect-multiparty');
 var im = require('imagemagick');
-
+var Q = require('q');
 /* DATA BASE */
 
 var dbProxy = require('libs/database/databaseProxy');
@@ -826,7 +826,7 @@ app.get('/releases/:id', ensureAuthenticated, ensureAdmin, function(req, res) {
 
 
     }).then(function(release) {
-    console.log(release)
+ 
     res.send(release);
   });
 });
@@ -840,11 +840,66 @@ app.put('/releases/:id', ensureAuthenticated, ensureAdmin, function(req, res) {
   var releaseId = req.params.id
 
   var release = req.body.release;
+    // update the 
+  
+  console.log('begin chain of sequelize commands');
+  // UPDATE THE RELEASE
+  dbProxy.Release.find({where: {id:releaseId}}).then(function(newRelease) {
+      var trackUpdatePromises = [];
 
-  // update the 
-  //  would be nice to store the object here  
-    
-   
+      for (var i = release.Tracks.length - 1; i >= 0; i--) {
+        trackUpdatePromises.push(
+        dbProxy.Track.find({where: {id:release.Tracks[i].id}}).then(function(track){
+           // UPDATE TRACK INFO:
+              var deferred = Q.defer();
+
+              var jsonTrack;
+              for (var i = release.Tracks.length - 1; i >= 0; i--) {
+                if(release.Tracks[i].id == track.id){
+                  jsonTrack = release.Tracks[i];
+                }
+              }
+             
+              track.updateAttributes(jsonTrack).then(function(newTrack) {
+                // SET THE ARTISTS
+                
+                // list of promixes tu track 
+                
+                // 
+                // 
+                var newProducers = [];
+                for (var i = jsonTrack.Producer.length - 1; i >= 0; i--) {
+                  newProducers.push(jsonTrack.Producer[i].id);
+                };
+                
+                var newRemixers = [];
+                for (var i = jsonTrack.Remixer.length - 1; i >= 0; i--) {
+                  newRemixers.push(jsonTrack.Remixer[i].id);
+                };
+                
+                // Q.all  accept an array of promises functions. Call the done when all are successful
+                Q.all([track.setRemixer(newRemixers), track.setProducer(newProducers)]).done(function () {
+                  deferred.resolve();
+                });
+               
+                //res.send();
+              })
+            // I NEED TO RETURN HERE A PROMIXE 
+              return deferred.promise;
+            
+        })
+        )  // push into trackUpdate Promises 
+      }; 
+
+      Q.allSettled(trackUpdatePromises)  
+        .then(function (results) {
+          results.forEach(function (result) {
+            console.log("Update Track Request Done")
+          });
+          console.log("SENDING OUT")
+          res.send(results);
+        })
+  })
 
 
 });
