@@ -406,6 +406,7 @@ app.get('/companies/:id/labels', ensureAuthenticated, ensureAdmin, function(req,
 app.get('/companies/:id', ensureAuthenticated, ensureAdmin, function(req, res) {
   var companyId = req.params.id;
   dbProxy.Company.find({ where: {id: companyId} }).then(function(company) {
+    // rewrite with inclusion 
     if(company){
         company.getUsers({attributes: ['displayName']}).success(function(associatedUsers) {
             company.dataValues.owners = (associatedUsers);
@@ -911,8 +912,8 @@ app.put('/releases/:id', ensureAuthenticated, ensureAdmin, function(req, res) {
  */
 /*
  |--------------------------------------------------------------------------
- | GET /artists/:id   
- | return List of all the companies
+ | GET /artists/search/:searchString 
+ | return list of all the artists that match the searchString
  |--------------------------------------------------------------------------
  */
 app.get('/artists/search/:searchString', ensureAuthenticated, ensureAdmin, function(req, res) {
@@ -921,6 +922,36 @@ app.get('/artists/search/:searchString', ensureAuthenticated, ensureAdmin, funct
     res.send(artists);
   });
 });
+
+/*
+ |--------------------------------------------------------------------------
+ | GET /artists/   
+ | return List of all the artists
+ | TODO: pagination
+ |--------------------------------------------------------------------------
+ */
+app.get('/artists/', ensureAuthenticated, ensureAdmin, function(req, res) {
+ 
+  dbProxy.Artist.findAll().then(function(artists) {
+    res.send(artists);
+  });
+});
+
+/*
+ |--------------------------------------------------------------------------
+ | GET /artists/:id 
+ | return List of all the artists
+ |--------------------------------------------------------------------------
+ */
+app.get('/artists/:id', ensureAuthenticated, ensureAdmin, function(req, res) {
+  var artistId = req.params.id;
+  dbProxy.Artist.find({ where: {id: artistId}, include: [
+      {model: dbProxy.User}]
+    }).then(function(artist) {
+    res.send(artist);
+  });
+});
+
 
 /*
  |--------------------------------------------------------------------------
@@ -941,6 +972,35 @@ app.post('/artists/', ensureAuthenticated, ensureAdmin, function(req, res) {
        res.send(artist);
   });
 });
+/*
+ |--------------------------------------------------------------------------
+ | POST /artists/:idArtist/owners/   POST {the id of owner to add}
+ | return List of all the companies
+ |--------------------------------------------------------------------------
+ */
+app.post('/artists/:artistId/owners', ensureAuthenticated, ensureAdmin, function(req, res) {
+  var newOwnerId = req.body.newOwner;
+  var artistId = req.params.artistId
+
+  
+  console.log(newOwnerId+" == "+artistId)
+  dbProxy.Artist.find({where: {id: artistId}}).then(function(artist) {
+    artist.getUsers({ where: {id: newOwnerId}}).success(function(users) {
+      if(users.length == 0){
+          dbProxy.User.find({where: {id: newOwnerId}}).then(function(user) {
+            artist.addUsers(user).success(function() {
+              res.send();
+            })
+          })
+      }else{
+        
+        console.log("This user was already associated to this artist!")
+        // TODO, there were an error, need to fix
+      }
+    })
+  });
+}); 
+
 
 /*
  |--------------------------------------------------------------------------
