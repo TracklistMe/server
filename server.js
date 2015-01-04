@@ -124,10 +124,22 @@ if (app.get('env') === 'production') {
 Use busboy middleware
 ============================================================ */
 app.use(busboy());
-
-app.use('/images', express.static(__dirname + '/uploadFolder/img/'));
-
  
+
+app.get('/images/:url', function(req, res) {
+  var mimeTypes = {
+    "jpeg": "image/jpeg",
+    "jpg": "image/jpeg",
+    "png": "image/png"
+  };
+   
+  var image = req.params.url; 
+ 
+  var mimeType = mimeTypes[path.extname(image).split(".")[1]];
+  res.writeHead(200, {'Content-Type':mimeType});
+  var fileStream = fs.createReadStream(__dirname +'/uploadFolder/img/'+image);
+  fileStream.pipe(res);
+});
 
 //app.use('/cover/', express.static(__dirname + '/../datastore'));
  
@@ -818,7 +830,24 @@ app.get('/releases/:id', ensureAuthenticated, ensureAdmin, function(req, res) {
     res.send(release);
   });
 });
+/*
+ |--------------------------------------------------------------------------
+ | PUT /releases/:id   
+ | return TBD 
+ |--------------------------------------------------------------------------
+ */
+app.put('/releases/:id', ensureAuthenticated, ensureAdmin, function(req, res) {
+  var releaseId = req.params.id
 
+  var release = req.body.release;
+
+  // update the 
+  //  would be nice to store the object here  
+    
+   
+
+
+});
 
 /*
  |--------------------------------------------------------------------------
