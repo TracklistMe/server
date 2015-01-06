@@ -475,12 +475,33 @@ app.post('/companies/:idCompany/profilePicture/:width/:height/', ensureAuthentic
       var idCompany = req.params.idCompany;
       dbProxy.Company.find({ where: {id: idCompany} }).then(function(company) {
         company.logo = req.uploadedFile[0].filename;
-          company.save(function(){   
+          company.save().then(function(){     
             res.send();
           });
       });
       
 });
+
+
+/*
+ |--------------------------------------------------------------------------
+ | POST /companies/:idCompany/profilePicture/:width/:height   POST {the id of owner to add}
+ | return List of all the companies
+ |--------------------------------------------------------------------------
+ */
+
+app.post('/artists/:idArtist/profilePicture/:width/:height/', ensureAuthenticated, upload, resize, function (req, res, next) {
+      var idArtist = req.params.idArtist;
+      dbProxy.Artist.find({ where: {id: idArtist} }).then(function(artist) {
+        artist.avatar = req.uploadedFile[0].filename;
+          artist.save().then(function(){   
+            res.send();
+            console.log("SENT")
+          });
+      });
+      
+});
+
 
 
 
@@ -952,6 +973,24 @@ app.get('/artists/:id', ensureAuthenticated, ensureAdmin, function(req, res) {
   });
 });
 
+/*
+ |--------------------------------------------------------------------------
+ | PUT /artists/:id 
+ | return List of all the artists
+ |--------------------------------------------------------------------------
+ */
+app.put('/artists/:id', ensureAuthenticated, ensureAdmin, function(req, res) {
+  var artistId = req.params.id;
+  console.log("Update artist")
+  dbProxy.Artist.find({where: {id: artistId} }).then(function(artist) {
+    if (artist) { // if the record exists in the db
+     artist.updateAttributes(req.body).then(function(artist) {
+        res.send();
+      });
+    }
+  })
+});
+
 
 /*
  |--------------------------------------------------------------------------
@@ -1105,16 +1144,33 @@ app.get('/me/companies', ensureAuthenticated, function(req, res) {
 app.get('/me/labels', ensureAuthenticated, function(req, res) {
    
    dbProxy.User.find({where: {id: req.user}}).then(function(user) {
-    if(user.isAdmin){
-      dbProxy.Label.findAll().success(function(labels) { 
-        res.send(labels);
-      })
-    } else {
-      user.getLabels().success(function(labels) { 
-        res.send(labels);
-      })
-    }
-       
+      if(user.isAdmin){
+        dbProxy.Label.findAll().success(function(labels) { 
+          res.send(labels);
+        })
+      } else {
+        user.getLabels().success(function(labels) { 
+          res.send(labels);
+        })
+      }
+    })
+});
+
+
+/*
+ |--------------------------------------------------------------------------
+ | GET /me/artists/
+ | Get all the companies of an autenticated account
+ |--------------------------------------------------------------------------
+ */
+app.get('/me/artists', ensureAuthenticated, function(req, res) {
+   
+   dbProxy.User.find({where: {id: req.user}}).then(function(user) {
+      
+        user.getArtists().success(function(artists) { 
+          res.send(artists);
+        })
+      
     })
 });
 
