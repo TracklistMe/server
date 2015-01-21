@@ -83,14 +83,15 @@ mongoose.connect(config.MONGO_URI);
 
 
 var app = express();
+var server = require('http').Server(app)
 var hostname;
 console.log(process.env.HOST)
-if(process.env.HOST == 'undefined'){
-  hostname = 'staging.tracklist.me'
+if(process.env.HOST == undefined){
+  hostname = 'store.tracklist.me';
 } else {
   hostname = process.env.HOST;
 } 
- 
+console.log(hostname); 
 app.set('port', process.env.PORT || 3000);
 app.use(logger('dev'));
 app.use(bodyParser.json());
@@ -98,13 +99,13 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(function (req, res, next) {
 
     // Website you wish to allow to connect
-    res.setHeader('Access-Control-Allow-Origin', 'http://'+hostname+':9000');
+    res.setHeader('Access-Control-Allow-Origin', 'http://'+hostname);
     // Request methods you wish to allow
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
 
     // Request headers you wish to allow
     res.setHeader('Access-Control-Allow-Headers', 'my-header,X-Requested-With,content-type,Authorization');
-
+    //res.setHeader("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization");
     // Set to true if you need the website to include cookies in the requests sent
     // to the API (e.g. in case you use sessions)
     res.setHeader('Access-Control-Allow-Credentials', true);
@@ -112,6 +113,7 @@ app.use(function (req, res, next) {
     // Pass to next layer of middleware
     next();
 });
+
 // Force HTTPS on Heroku
 if (app.get('env') === 'production') {
   app.use(function(req, res, next) {
@@ -124,7 +126,14 @@ if (app.get('env') === 'production') {
 Use busboy middleware
 ============================================================ */
 app.use(busboy());
- 
+
+/**
+ * Root api to check whether the server is up and running
+ * TODO: remove
+ **/ 
+app.get('/', function(req, res) {
+   res.json({status: 'RUNNING', message: 'Server is working fine'});
+});
 
 app.get('/images/:url', function(req, res) {
   var mimeTypes = {
@@ -135,10 +144,21 @@ app.get('/images/:url', function(req, res) {
    
   var image = req.params.url; 
  
-  var mimeType = mimeTypes[path.extname(image).split(".")[1]];
-  res.writeHead(200, {'Content-Type':mimeType});
   var fileStream = fs.createReadStream(__dirname +'/uploadFolder/img/'+image);
-  fileStream.pipe(res);
+  // This will wait until we know the readable stream is actually valid before piping
+  fileStream.on('open', function () {
+    // If file exists we can get its mimetype
+    var mimeType = mimeTypes[path.extname(image).split(".")[1]];
+    res.writeHead(200, {'Content-Type':mimeType});
+    // This just pipes the read stream to the response object (which goes to the client)
+    fileStream.pipe(res);
+  });
+
+  // This catches any errors that happen while creating the readable stream (usually invalid names)
+  fileStream.on('error', function(err) {
+    res.status(404);
+    res.end("Image does not exist");
+  });
 });
 
 //app.use('/cover/', express.static(__dirname + '/../datastore'));
@@ -346,7 +366,6 @@ function createToken(user) {
   };
   return jwt.encode(payload, config.TOKEN_SECRET);
 }
-
 
 /*
  |--------------------------------------------------------------------------
@@ -1816,6 +1835,7 @@ app.get('/auth/unlink/:provider', ensureAuthenticated, function(req, res) {
  | Start the Server
  |--------------------------------------------------------------------------
  */
-app.listen(app.get('port'), function() {
+server.listen(app.get('port'), app.get('host'), function() {
   console.log('Express server listening on port ' + app.get('port'));
 });
+
