@@ -20,6 +20,8 @@ var moment = require('moment');
 var mongoose = require('mongoose');
 var request = require('request');
 var beatportValidate = require('libs/beatport/beatportProxy')
+var cloudstorage = require('libs/cloudstorage/cloudstorage');
+var fileUtils = require('libs/utils/file-utils');
 var multipart = require('connect-multiparty');
 var im = require('imagemagick');
 var Q = require('q');
@@ -131,34 +133,62 @@ app.use(busboy());
  * Root api to check whether the server is up and running
  * TODO: remove
  **/ 
-app.get('/', function(req, res) {
-   res.json({status: 'RUNNING', message: 'Server is working fine'});
+app.get('/', function(req, res, next) {
+  cloudstorage.createSignedUrl("file.txt", "GET", 60, function(err, url) {
+    if (err) {
+      res.status(404)
+      res.json({ status: 'ERROR', 
+                 message: 'Signed url not found', 
+                 url: url});
+      return;
+    }
+    res.json({ status: 'RUNNING', 
+               message: 'Server is working fine', 
+               url: url});    
+  });
 });
 
-app.get('/images/:url', function(req, res) {
+app.get('/testUpload', function(req, res) {
+  cloudstorage.upload('img/default.png', 
+    __dirname + '/uploadFolder/img/1_1421078454067_KennyRandomWallpaper.jpg',
+    function(err, filename) {
+      if(err) {
+        console.log(err);
+        res.status = 500;
+        res.json({ status: 'ERROR', 
+                 message: 'Error uploading file', 
+                 filename: filename});
+        return;
+      }
+        res.status = 200;
+        res.send();
+    });
+});
+
+/**
+ * TODO fix ugly redirect and check for authentication
+ **/
+app.get('/images/*', function(req, res) {
+
+  console.log(req.originalUrl)
+
   var mimeTypes = {
     "jpeg": "image/jpeg",
     "jpg": "image/jpeg",
     "png": "image/png"
   };
    
-  var image = req.params.url; 
- 
-  var fileStream = fs.createReadStream(__dirname +'/uploadFolder/img/'+image);
-  // This will wait until we know the readable stream is actually valid before piping
-  fileStream.on('open', function () {
-    // If file exists we can get its mimetype
-    var mimeType = mimeTypes[path.extname(image).split(".")[1]];
-    res.writeHead(200, {'Content-Type':mimeType});
-    // This just pipes the read stream to the response object (which goes to the client)
-    fileStream.pipe(res);
-  });
+  var image = req.originalUrl.substring(8,req.originalUrl.length); 
 
-  // This catches any errors that happen while creating the readable stream (usually invalid names)
-  fileStream.on('error', function(err) {
-    res.status(404);
-    res.end("Image does not exist");
-  });
+  cloudstorage.createSignedUrl(image, "GET", 20, function(err, url) {
+    if (err) {
+      throw err;
+      err.status = 404;
+      err.message = "Image not found";
+      return next(err);
+    }
+    res.redirect(url);  
+  }); /* Cloud storage signed url callback*/
 });
 
 //app.use('/cover/', express.static(__dirname + '/../datastore'));
@@ -180,140 +210,158 @@ app.get('/cover/:labelId/:releaseNumber/:image', function(req, res) {
   fileStream.pipe(res);
 
 });
- 
- 
 
 
+/**
+ * POST /upload/profilePicture/:width/:height/
+ * Upload user profile picture to the CDN, original size and resized
+ **/
+app.post( '/upload/profilePicture/:width/:height/', 
+  ensureAuthenticated, 
+  uploadFunction(fileUtils.localImagePath, fileUtils.remoteImagePath), 
+  resizeFunction(fileUtils.localImagePath, fileUtils.remoteImagePath), 
+  function (req, res, next) {
 
-app.post('/upload/profilePicture/:width/:height/', ensureAuthenticated, upload, resize, function (req, res, next) {
-      dbProxy.User.find({ where: {id: req.user} }).then(function(user) {
-        user.avatar = req.uploadedFile[0].filename;
-        user.save(function(){
-        });
+  dbProxy.User.find({ where: {id: req.user} }).then(function(user) {
+    // We store CDN address as avatar
+    var oldAvatar = user.avatar;
+    var oldFullSizeAvatar = user.fullSizeAvatar;
+    user.avatar = fileUtils.remoteImagePath(req, req.uploadedFile[0].resizedFilename);
+    user.fullSizeAvatar = fileUtils.remoteImagePath(req, req.uploadedFile[0].filename);
+    user.save().then(function (user) {
+      // we remove old avatars from the CDN
+      cloudstorage.remove(oldAvatar);
+      cloudstorage.remove(oldFullSizeAvatar);
+      // We remove temporarily stored files
+      fs.unlink(fileUtils.localImagePath(req, req.uploadedFile[0].filename));
+      fs.unlink(fileUtils.localImagePath(req, req.uploadedFile[0].resizedFilename));
+
       res.writeHead(200, {"content-type":"text/html"});   //http response header
-      res.end(JSON.stringify(req.uploadedFile)); 
-      });
-  });  //  @END/ POST
+      res.end(JSON.stringify(req.uploadedFile));
+    });
+  }); /* Database read callback */
+}); /* POST /upload/profilePicture/:width/:height/ */
   
+/**
+ * Generator of upload functions
+ * localPathBuilder: given a filename returns local file path
+ * remotePathBuilder: given a filename return CDN file path
+ * retuns: an upload function parameterized on localPathBuilder and cloudPathBuilder
+ **/
+function uploadFunction(localPathBuilder, remotePathBuilder) { 
+  return function upload(req,res,next){
+       
+      var arr;
+      var fstream;
+      var fileSize = 0;
+      req.pipe(req.busboy);
 
- 
+      req.busboy.on('file', function (fieldname, file, filename, encoding, mimetype) {
 
+        // File data received
+        file.on('data', function(data) {});
+        
+        // End of file
+        file.on('end', function() {});
 
+        // Get actual file name and both local and remote paths
+        var originalfilename = filename.split('.')[0];
+        var extension = filename.split('.').slice(0).pop();
+        filename = fileUtils.timestamp(filename);
+        var localPath = localPathBuilder(req, filename);
+        var remotePath = remotePathBuilder(req, filename);
+       
+        //populate array
+        //I am collecting file info in data read about the file. It may be more correct to read 
+        //file data after the file has been saved to img folder i.e. after file.pipe(stream) completes
+        //the file size can be got using stats.size as shown below
+        arr= [{originalfilename:originalfilename, extension: extension,filesize: fileSize, fieldname: fieldname, filename: filename, encoding: encoding, MIMEtype: mimetype}];
+        //save files in the form of userID + timestamp + filenameSanitized
+        //Path where image will be uploaded
+        fstream = fs.createWriteStream(localPath);
+        file.pipe(fstream);
 
-
-/*
- |--------------------------------------------------------------------------
- | Upload Function
- |--------------------------------------------------------------------------
- */
-
-function upload(req,res,next){
-     
-    var arr;
-    var fstream;
-    var fileSize = 0;
-    req.pipe(req.busboy);
-
-      //--------------------------------------------------------------------------
-    req.busboy.on('file', function (fieldname, file, filename, encoding, mimetype) {
-      //uploaded file name, encoding, MIME type
-      console.log('File [' + fieldname +']: filename:' + filename + ', encoding:' + encoding + ', MIME type:'+ mimetype);
-      //uploaded file size
-      file.on('data', function(data) {
-      //console.log('File [' + fieldname + '] got ' + data.length + ' bytes');
-      
-    });
-
- 
-
-    file.on('end', function() {
-      console.log('File [' + fieldname + '] ENDed');
-      console.log("-------------------------");
-    });
-    if (!Date.now) {
-        Date.now = function() { return new Date().getTime(); }
-    }
-    var originalfilename = filename.split('.')[0];
-    var extension = filename.split('.').slice(0).pop(),
-    filename = filename.replace(extension, '').replace(/\W+/g, '') + "." + extension;
-    filename = req.user+"_"+Date.now()+"_"+filename;
-   
-    
-    //populate array
-    //I am collecting file info in data read about the file. It may be more correct to read 
-    //file data after the file has been saved to img folder i.e. after file.pipe(stream) completes
-    //the file size can be got using stats.size as shown below
-    arr= [{originalfilename:originalfilename, extension: extension,filesize: fileSize, fieldname: fieldname, filename: filename, encoding: encoding, MIMEtype: mimetype}];
-    //save files in the form of userID + timestamp + filenameSanitized
-    //Path where image will be uploaded
-    fstream = fs.createWriteStream(__dirname + '/uploadFolder/img/' + filename); //create a writable stream
-    file.pipe(fstream);   //pipe the post data to the file
-
-   
-
-    //stream Ended - (data written) send the post response
-    req.on('end', function () {      
-      req.uploadedFile = arr;
-    });
-
-    //Finished writing to stream
-    fstream.on('finish', function () { 
-        //Get file stats (including size) for file saved to server
-        fs.stat(__dirname + '/uploadFolder/img/' + filename, function(err, stats) {
-            if(err) 
-              throw err;      
-            //if a file
-            if (stats.isFile()) {
-                //console.log("It\'s a file & stats.size= " + JSON.stringify(stats)); 
-                 
-                  
-                console.log("File size saved to server: " + stats.size); 
-                req.uploadedFile[0].filesize = stats.size; 
-                console.log("-----------------------");
-                next();
-            };
-          });
-    });
-
-
-        // error
-    fstream.on('error', function (err) {
-      console.log(err);
-    });
-
-    
-    });  // @END/ .req.busboy
-}
-
-
-function resize(req,res,next){
-  var newFileName,filename = req.uploadedFile[0].filename
-  var width = req.params.width
-  var height = req.params.height
-  if(!width) width = height
-  if(!height) height = width
-  if(width && height){ //only if both exists 
-        newFileName = 'resized_'+width+'-'+height+filename;
-        // resize image with Image Magick
-        im.crop({
-        srcPath: __dirname + '/uploadFolder/img/' + filename,
-        dstPath: __dirname + '/uploadFolder/img/'+ newFileName,
-        width: width,
-        height: height,
-        quality: 1,
-        gravity: 'Center'
-        }, function(err, stdout, stderr){
-            if (err) throw err;
-            console.log('Image resized')
-            next()
+        // When upload finished we save file information
+        req.on('end', function () {      
+          req.uploadedFile = arr;
         });
-  }
 
-  req.uploadedFile[0].filename = newFileName;
-  console.log(req.uploadedFile[0].filename)
-   
+        // When file has been written to disk we collect statistics
+        // and upload it to cloud storage
+        fstream.on('finish', function () {
 
-}
+          // CDN upload
+          cloudstorage.upload(remotePath, localPath,
+            function(err, key) {
+              // There was an error uploading the file
+              if(err) {
+                err.message = "Failed uploading file";
+                return next(err);
+              }
+              //Get file stats (including size) for file and continue
+              fs.stat(localPath, function(err, stats) {
+                if(err || !stats.isFile()) {
+                    err.message = "Failed uploading file";
+                    return next(err);
+                }   
+                req.uploadedFile[0].filesize = stats.size; 
+                next();           
+              }); /* Stat callback */
+            }); /* CDN upload callback */
+          }); /* File stream finish callback */
+
+        // We failed writing to disk
+        fstream.on('error', function (err) {
+          err.message = "Failed uploading file";
+          return next(err);
+        });    
+      });  // @END/ .req.busboy
+  } /* Upload function */
+} /* Upload function builder */
+
+/**
+ * Generator of resize functions
+ * localPathBuilder: given a filename returns local file path
+ * remotePathBuilder: given a filename return CDN file path
+ * retuns: a resize function parameterized on localPathBuilder and cloudPathBuilder
+ **/
+function resizeFunction(localPathBuilder, remotePathBuilder) {
+  return function resize(req,res,next){
+    var resizedFilename, filename = req.uploadedFile[0].filename
+    var width = req.params.width
+    var height = req.params.height
+    if(!width) width = height
+    if(!height) height = width
+    if(width && height){ //only if both exists 
+          resizedFilename = fileUtils.resized(filename, width, height);
+          // resize image with Image Magick
+          im.crop({
+          srcPath: localPathBuilder(req, filename),
+          dstPath: localPathBuilder(req, resizedFilename),
+          width: width,
+          height: height,
+          quality: 1,
+          gravity: 'Center'
+          }, function(err, stdout, stderr) {
+            if (err) {
+              err.message = "Failed resizing file";
+              return next(err);
+            }
+            // CDN upload
+            cloudstorage.upload(remotePathBuilder(req, resizedFilename), 
+              fileUtils.localImagePath(req, resizedFilename),
+              function(err, key) {
+                if(err) {
+                  err.message = "Failed uploading file";
+                  return next(err);
+                }
+                req.uploadedFile[0].resizedFilename = resizedFilename;
+                next();
+              }); /* CDN upload callback */
+          }); /* Image resize callback */
+    } /* If sizes are defined */
+  } /* Resize function */
+} /* Resize function builder*/
 
  
 
@@ -490,14 +538,32 @@ app.post('/companies/:companyId/owners', ensureAuthenticated, ensureAdmin, funct
  |--------------------------------------------------------------------------
  */
 
-app.post('/companies/:idCompany/profilePicture/:width/:height/', ensureAuthenticated, upload, resize, function (req, res, next) {
-      var idCompany = req.params.idCompany;
-      dbProxy.Company.find({ where: {id: idCompany} }).then(function(company) {
-        company.logo = req.uploadedFile[0].filename;
-          company.save().then(function(){     
-            res.send();
-          });
+
+
+app.post('/companies/:idCompany/profilePicture/:width/:height/', 
+  ensureAuthenticated, 
+  uploadFunction(fileUtils.localImagePath, fileUtils.remoteImagePath), 
+  resizeFunction(fileUtils.localImagePath, fileUtils.remoteImagePath),  
+  function (req, res, next) {
+    var idCompany = req.params.idCompany;
+    dbProxy.Company.find({ where: {id: idCompany} }).then(function(company) {
+      var oldLogo = company.logo;
+      var oldFullSizeLogo = company.fullSizeLogo;
+      company.logo = fileUtils.remoteImagePath(req, req.uploadedFile[0].resizedFilename);
+      company.fullSizeLogo = fileUtils.remoteImagePath(req, req.uploadedFile[0].filename);
+
+      company.save().then(function (company) {
+        // we remove old avatars from the CDN
+        cloudstorage.remove(oldLogo);
+        cloudstorage.remove(oldFullSizeLogo);
+        // We remove temporarily stored files
+        fs.unlink(fileUtils.localImagePath(req, req.uploadedFile[0].filename));
+        fs.unlink(fileUtils.localImagePath(req, req.uploadedFile[0].resizedFilename));
+
+        res.writeHead(200, {"content-type":"text/html"});   //http response header
+        res.end(JSON.stringify(req.uploadedFile));
       });
+    });
       
 });
 
@@ -509,16 +575,31 @@ app.post('/companies/:idCompany/profilePicture/:width/:height/', ensureAuthentic
  |--------------------------------------------------------------------------
  */
 
-app.post('/artists/:idArtist/profilePicture/:width/:height/', ensureAuthenticated, upload, resize, function (req, res, next) {
-      var idArtist = req.params.idArtist;
-      dbProxy.Artist.find({ where: {id: idArtist} }).then(function(artist) {
-        artist.avatar = req.uploadedFile[0].filename;
-          artist.save().then(function(){   
-            res.send();
-            console.log("SENT")
-          });
-      });
-      
+app.post('/artists/:idArtist/profilePicture/:width/:height/', 
+  ensureAuthenticated, 
+  uploadFunction(fileUtils.localImagePath, fileUtils.remoteImagePath), 
+  resizeFunction(fileUtils.localImagePath, fileUtils.remoteImagePath),  
+  function (req, res, next) {
+
+  var idArtist = req.params.idArtist;
+  dbProxy.Artist.find({ where: {id: idArtist} }).then(function(artist) {
+    // We store CDN address as avatar
+    var oldAvatar = artist.avatar;
+    var oldFullSizeAvatar = artist.fullSizeAvatar;
+    artist.avatar = fileUtils.remoteImagePath(req, req.uploadedFile[0].resizedFilename);
+    artist.fullSizeAvatar = fileUtils.remoteImagePath(req, req.uploadedFile[0].filename);
+    artist.save().then(function (artist) {
+      // we remove old avatars from the CDN
+      cloudstorage.remove(oldAvatar);
+      cloudstorage.remove(oldFullSizeAvatar);
+      // We remove temporarily stored files
+      fs.unlink(fileUtils.localImagePath(req, req.uploadedFile[0].filename));
+      fs.unlink(fileUtils.localImagePath(req, req.uploadedFile[0].resizedFilename));
+
+      res.writeHead(200, {"content-type":"text/html"});   //http response header
+      res.end(JSON.stringify(req.uploadedFile));
+    });
+  }); /* Database read callback */     
 });
 
 
@@ -645,17 +726,59 @@ app.post('/labels/', ensureAuthenticated, function(req, res) {
  | return TBD
  |--------------------------------------------------------------------------
  */
+/*
+  dbProxy.User.find({ where: {id: req.user} }).then(function(user) {
+    // We store CDN address as avatar
+    var oldAvatar = user.avatar;
+    var oldFullSizeAvatar = user.fullSizeAvatar;
+    user.avatar = fileUtils.remoteImagePath(req, req.uploadedFile[0].resizedFilename);
+    user.fullSizeAvatar = fileUtils.remoteImagePath(req, req.uploadedFile[0].filename);
+    user.save(function(){});
+    // we remove old avatars from the CDN
+    cloudstorage.remove(oldAvatar);
+    cloudstorage.remove(oldFullSizeAvatar);
+    // We remove temporarily stored files
+    fs.unlink(fileUtils.localImagePath(req, req.uploadedFile[0].filename));
+    fs.unlink(fileUtils.localImagePath(req, req.uploadedFile[0].resizedFilename));
+    // We also return the signed url of the resized image
+    cloudstorage.createSignedUrl(req.uploadedFile[0].resizedFilename, "GET", 60, function(err, url) {
+      if (err) {
+        err.status = 500;
+        err.message = "Failed uploading file";
+        return next(err);
+      }
+      req.uploadedFile[0].signedUrl = url;
+      res.writeHead(200, {"content-type":"text/html"});   //http response header
+      res.end(JSON.stringify(req.uploadedFile)); 
+    }); /* Cloud storage signed url callback*/
+  //}); /* Database read callback */
 
-app.post('/labels/:idLabel/profilePicture/:width/:height/', ensureAuthenticated, upload, resize, function (req, res, next) {
-      var idLabel = req.params.idLabel;
-      dbProxy.Label.find({ where: {id: idLabel} }).then(function(label) {
-        label.logo = req.uploadedFile[0].filename;
-          label.save().success(function() { 
-            res.send();
-          })
+
+app.post('/labels/:idLabel/profilePicture/:width/:height/', 
+  ensureAuthenticated, 
+  uploadFunction(fileUtils.localImagePath, fileUtils.remoteImagePath), 
+  resizeFunction(fileUtils.localImagePath, fileUtils.remoteImagePath),  
+  function (req, res, next) {
+    var idLabel = req.params.idLabel;
+    dbProxy.Label.find({ where: {id: idLabel} }).then(function(label) {
+      var oldLogo = label.logo;
+      var oldFullSizeLogo = label.fullSizeLogo;
+      label.logo = fileUtils.remoteImagePath(req, req.uploadedFile[0].resizedFilename);
+      label.fullSizeLogo = fileUtils.remoteImagePath(req, req.uploadedFile[0].filename);
+
+      label.save().then(function (label) {
+        // we remove old avatars from the CDN
+        cloudstorage.remove(oldLogo);
+        cloudstorage.remove(oldFullSizeLogo);
+        // We remove temporarily stored files
+        fs.unlink(fileUtils.localImagePath(req, req.uploadedFile[0].filename));
+        fs.unlink(fileUtils.localImagePath(req, req.uploadedFile[0].resizedFilename));
+
+        res.writeHead(200, {"content-type":"text/html"});   //http response header
+        res.end(JSON.stringify(req.uploadedFile));
       });
-       
-});
+    }); 
+  });
 
 
 /*
@@ -665,7 +788,11 @@ app.post('/labels/:idLabel/profilePicture/:width/:height/', ensureAuthenticated,
  |--------------------------------------------------------------------------
  */
 
-app.post('/labels/:idLabel/dropZone/', ensureAuthenticated, upload, function (req, res, next) {
+app.post('/labels/:idLabel/dropZone/', 
+  ensureAuthenticated, 
+  uploadFunction(fileUtils.localImagePath, fileUtils.remoteImagePath), 
+  function (req, res, next) {
+
       var idLabel = req.params.idLabel;
       console.log("****************")
       console.log(req.uploadedFile) 
@@ -1828,6 +1955,37 @@ app.get('/auth/unlink/:provider', ensureAuthenticated, function(req, res) {
       res.status(200).end();
     });
   });
+});
+
+/**
+ * Error handlers have to be defined after all routes
+ * development: prints stack traces
+ * producetion: does not print stack traces
+ **/
+if (app.get('env') === 'development') {
+ 
+  app.use(function(err, req, res, next) {
+    console.log("CALLED ERROR HANDLING");
+    res.status(err.status || 500);
+    res.json( {
+        status: "ERROR",
+        message: err.message,
+        error: err
+    });
+  });
+ 
+}
+ 
+// production error handler
+// no stacktraces leaked to user
+app.use(function(err, req, res, next) {
+    console.log("CALLED ERROR HANDLING");
+    res.status(err.status || 500);
+    res.json( {
+        status: "ERROR",
+        message: err.message,
+        error: {}
+    });
 });
 
 /*
