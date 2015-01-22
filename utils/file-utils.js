@@ -1,10 +1,11 @@
 'use strict';
 
 var path                = require('path');
-var config              = require('config/config');
 var fs                  = require('fs-extra');
-var cloudstorage        = require('libs/cloudstorage/cloudstorage');
 var im                  = require('imagemagick');
+
+var cloudstorage        = rootRequire('libs/cloudstorage/cloudstorage');
+var config              = rootRequire('config/config');
 
 var uploadFolder = path.resolve(__dirname+"/../uploadFolder");
 

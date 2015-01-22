@@ -1,7 +1,7 @@
-var config = require('config/config');
-var Sequelize = require('sequelize');
-var bcrypt = require('bcryptjs');
+var Sequelize       = require('sequelize');
+var bcrypt          = require('bcryptjs');
 
+var config          = rootRequire('config/config');
 
 var sequelizeObject = new Sequelize(config.MYSQL_DATABASE, config.MYSQL_USER, config.MYSQL_PASSWORD, {
   host: config.MYSQL_HOST,

@@ -4,36 +4,47 @@
  * License: MIT
  */
 
-var path = require('path');
-var fs = require('fs-extra');       //File System - for file manipulation
-var util = require('util'); 
-var busboy = require('connect-busboy'); 
-var qs = require('querystring');
-var config = require('config/config');
-var http = require('http');
-var async = require('async'); 
-var bodyParser = require('body-parser');
-var express = require('express');
-var logger = require('morgan');
-var mongoose = require('mongoose');
-var request = require('request');
-var cloudstorage = require('libs/cloudstorage/cloudstorage');
-var fileUtils = require('utils/file-utils');
-var multipart = require('connect-multiparty');
-/* DATA BASE */
+/*
+ * Used to require modules starting from root of the app
+ */
+global.rootRequire = function(name) {
+    return require(__dirname + '/' + name);
+}
 
+
+var path                = require('path');
+var fs                  = require('fs-extra'); 
+var util                = require('util'); 
+var busboy              = require('connect-busboy'); 
+var qs                  = require('querystring');
+var http                = require('http');
+var async               = require('async'); 
+var bodyParser          = require('body-parser');
+var express             = require('express');
+var logger              = require('morgan');
+var mongoose            = require('mongoose');
+var request             = require('request');
+var multipart           = require('connect-multiparty');
+
+
+var config              = rootRequire('config/config');
+var cloudstorage        = rootRequire('libs/cloudstorage/cloudstorage');
+var fileUtils           = rootRequire('utils/file-utils');
 
 /*
  * Require controllers
  */
-var users = require('controllers/users.js');
-var companies = require('controllers/companies.js');
-var artists = require('controllers/artists.js');
-var labels = require('controllers/labels.js');
-var releases = require('controllers/releases.js');
-var authenticators = require('controllers/authenticators.js');
+var users               = rootRequire('controllers/users.js');
+var companies           = rootRequire('controllers/companies.js');
+var artists             = rootRequire('controllers/artists.js');
+var labels              = rootRequire('controllers/labels.js');
+var releases            = rootRequire('controllers/releases.js');
+var authenticators      = rootRequire('controllers/authenticators.js');
 
-var dbProxy = require('models/model');
+/*
+ * Require models
+ */
+var dbProxy = rootRequire('models/model');
 
 console.log(process.env.HOST)
 

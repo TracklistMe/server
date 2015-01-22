@@ -1,13 +1,13 @@
 'use strict';
 
-var crypto = require("crypto");
-var fs = require("fs");
-var config = require('config/config');
+var config            = rootRequire('config/config');
 
-var gcloud = require('gcloud')({
-  keyFilename: config.GOOGLE_DEVELOPER_KEY_PATH,
-  projectId: config.GOOGLE_PROJECT_NAME
-});
+var crypto            = require("crypto");
+var fs                = require("fs");
+var gcloud            = require('gcloud')({
+                          keyFilename: config.GOOGLE_DEVELOPER_KEY_PATH,
+                          projectId: config.GOOGLE_PROJECT_NAME
+                        });
 
 var bucket = gcloud.storage().bucket(config.BUCKET_NAME);
 

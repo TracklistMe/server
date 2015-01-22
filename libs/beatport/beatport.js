@@ -1,12 +1,13 @@
 
-var Q = require('q');
-var config = require('config/config');
-var dbProxy = require('models/model');
-var bcrypt = require('bcryptjs');
-var fs = require('fs');
-var util = require('util');
-var xml2js = require('xml2js');
-var mkdir = require('mkdirp');
+var Q           = require('q');
+var bcrypt      = require('bcryptjs');
+var fs          = require('fs');
+var util        = require('util');
+var xml2js      = require('xml2js');
+var mkdir       = require('mkdirp');
+
+var config      = rootRequire('config/config');
+var dbProxy     = rootRequire('models/model');
 
 var CORRECT = "correct"
 var FAIL = "fail"

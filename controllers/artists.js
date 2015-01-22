@@ -1,10 +1,11 @@
 'use strict';
 
-var fileUtils             = require('utils/file-utils');
-var authenticationUtils   = require('utils/authentication-utils');
-var model                 = require('models/model');
-var cloudstorage          = require('libs/cloudstorage/cloudstorage');
 var fs                    = require('fs-extra');
+
+var fileUtils             = rootRequire('utils/file-utils');
+var authenticationUtils   = rootRequire('utils/authentication-utils');
+var model                 = rootRequire('models/model');
+var cloudstorage          = rootRequire('libs/cloudstorage/cloudstorage');
 
 module.exports.controller = function(app) {
 

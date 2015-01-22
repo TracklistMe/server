@@ -1,9 +1,10 @@
 'use strict';
 
 var jwt       = require('jwt-simple');
-var config    = require('config/config');
 var moment    = require('moment');
-var model     = require('models/model');
+
+var model     = rootRequire('models/model');
+var config    = rootRequire('config/config');
 
 /*
  |--------------------------------------------------------------------------
