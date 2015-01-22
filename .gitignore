@@ -3,7 +3,7 @@ bower_components
 .DS_Store
 .tmp
 log
-
+config
 config.js
 uploadFolder/
 !node_module/libs/beatport/beatportProxy.js
