@@ -204,6 +204,11 @@ app.get('/images/*', function(req, res) {
       err.message = "Image not found";
       return next(err);
     }
+    console.log("ERR: ");
+    console.log(err)
+    console.log("URL")
+    console.log(url)
+
     res.redirect(url);  
   }); /* Cloud storage signed url callback*/
 });
