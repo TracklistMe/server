@@ -197,4 +197,4 @@ Artist.hasMany(User)
 User.hasMany(Artist) 
 
 
-sequelizeObject.sync();
+//sequelizeObject.sync();
