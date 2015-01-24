@@ -12,34 +12,34 @@ global.rootRequire = function(name) {
 }
 
 
-var path                = require('path');
-var fs                  = require('fs-extra'); 
-var util                = require('util'); 
-var busboy              = require('connect-busboy'); 
-var qs                  = require('querystring');
-var http                = require('http');
-var async               = require('async'); 
-var bodyParser          = require('body-parser');
-var express             = require('express');
-var logger              = require('morgan');
-var mongoose            = require('mongoose');
-var request             = require('request');
-var multipart           = require('connect-multiparty');
+var path = require('path');
+var fs = require('fs-extra');
+var util = require('util');
+var busboy = require('connect-busboy');
+var qs = require('querystring');
+var http = require('http');
+var async = require('async');
+var bodyParser = require('body-parser');
+var express = require('express');
+var logger = require('morgan');
+var mongoose = require('mongoose');
+var request = require('request');
+var multipart = require('connect-multiparty');
 
 
-var config              = rootRequire('config/config');
-var cloudstorage        = rootRequire('libs/cloudstorage/cloudstorage');
-var fileUtils           = rootRequire('utils/file-utils');
+var config = rootRequire('config/config');
+var cloudstorage = rootRequire('libs/cloudstorage/cloudstorage');
+var fileUtils = rootRequire('utils/file-utils');
 
 /*
  * Require controllers
  */
-var users               = rootRequire('controllers/users.js');
-var companies           = rootRequire('controllers/companies.js');
-var artists             = rootRequire('controllers/artists.js');
-var labels              = rootRequire('controllers/labels.js');
-var releases            = rootRequire('controllers/releases.js');
-var authenticators      = rootRequire('controllers/authenticators.js');
+var users = rootRequire('controllers/users.js');
+var companies = rootRequire('controllers/companies.js');
+var artists = rootRequire('controllers/artists.js');
+var labels = rootRequire('controllers/labels.js');
+var releases = rootRequire('controllers/releases.js');
+var authenticators = rootRequire('controllers/authenticators.js');
 
 /*
  * Require models
@@ -57,8 +57,8 @@ User.beforeCreate(function(user, fn) {
   )
  */
 
- 
- 
+
+
 /*
 var userSchema = new mongoose.Schema({
   email: { type: String, unique: true, lowercase: true },
@@ -105,20 +105,22 @@ var app = express();
 var server = require('http').Server(app)
 var hostname;
 console.log(process.env.HOST)
-if(process.env.HOST == undefined){
-  hostname = 'store.tracklist.me';
+if (process.env.HOST == undefined) {
+    hostname = 'store.tracklist.me';
 } else {
-  hostname = process.env.HOST;
-} 
-console.log(hostname); 
+    hostname = process.env.HOST;
+}
+console.log(hostname);
 app.set('port', process.env.PORT || 3000);
 app.use(logger('dev'));
 app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
-app.use(function (req, res, next) {
+app.use(bodyParser.urlencoded({
+    extended: true
+}));
+app.use(function(req, res, next) {
 
     // Website you wish to allow to connect
-    res.setHeader('Access-Control-Allow-Origin', 'http://'+hostname);
+    res.setHeader('Access-Control-Allow-Origin', 'http://' + hostname);
     // Request methods you wish to allow
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
 
@@ -135,11 +137,11 @@ app.use(function (req, res, next) {
 
 // Force HTTPS on Heroku
 if (app.get('env') === 'production') {
-  app.use(function(req, res, next) {
-    var protocol = req.get('x-forwarded-proto');
-    protocol == 'https' ? next() : res.redirect('https://' + req.hostname + req.url);
-  });
-} 
+    app.use(function(req, res, next) {
+        var protocol = req.get('x-forwarded-proto');
+        protocol == 'https' ? next() : res.redirect('https://' + req.hostname + req.url);
+    });
+}
 
 /* ========================================================== 
 Use busboy middleware
@@ -149,71 +151,77 @@ app.use(busboy());
 /**
  * Root api to check whether the server is up and running
  * TODO: remove
- **/ 
+ **/
 app.get('/', function(req, res, next) {
-  cloudstorage.createSignedUrl("file.txt", "GET", 60, function(err, url) {
-    if (err) {
-      res.status(404)
-      res.json({ status: 'ERROR', 
-                 message: 'Signed url not found', 
-                 url: url});
-      return;
-    }
-    res.json({ status: 'RUNNING', 
-               message: 'Server is working fine', 
-               url: url});    
-  });
+    cloudstorage.createSignedUrl("file.txt", "GET", 60, function(err, url) {
+        if (err) {
+            res.status(404)
+            res.json({
+                status: 'ERROR',
+                message: 'Signed url not found',
+                url: url
+            });
+            return;
+        }
+        res.json({
+            status: 'RUNNING',
+            message: 'Server is working fine',
+            url: url
+        });
+    });
 });
 
 app.get('/testUpload', function(req, res) {
-  cloudstorage.upload('img/default.png', 
-    __dirname + '/uploadFolder/img/1_1421078454067_KennyRandomWallpaper.jpg',
-    function(err, filename) {
-      if(err) {
-        console.log(err);
-        res.status = 500;
-        res.json({ status: 'ERROR', 
-                 message: 'Error uploading file', 
-                 filename: filename});
-        return;
-      }
-        res.status = 200;
-        res.send();
-    });
+    cloudstorage.upload('img/default.png',
+        __dirname + '/uploadFolder/img/1_1421078454067_KennyRandomWallpaper.jpg',
+        function(err, filename) {
+            if (err) {
+                console.log(err);
+                res.status = 500;
+                res.json({
+                    status: 'ERROR',
+                    message: 'Error uploading file',
+                    filename: filename
+                });
+                return;
+            }
+            res.status = 200;
+            res.send();
+        });
 });
- 
+
 /**
  * TODO fix ugly redirect and check for authentication
  **/
 app.get('/images/*', function(req, res) {
 
-  console.log(req.originalUrl)
+    console.log(req.originalUrl)
 
-  var mimeTypes = {
-    "jpeg": "image/jpeg",
-    "jpg": "image/jpeg",
-    "png": "image/png"
-  };
-   
-  var image = req.originalUrl.substring(8,req.originalUrl.length); 
+    var mimeTypes = {
+        "jpeg": "image/jpeg",
+        "jpg": "image/jpeg",
+        "png": "image/png"
+    };
 
-  cloudstorage.createSignedUrl(image, "GET", 20, function(err, url) {
-    if (err) {
-      throw err;
-      err.status = 404;
-      err.message = "Image not found";
-      return next(err);
-    }
-    console.log("ERR: ");
-    console.log(err)
-    console.log("URL")
-    console.log(url)
+    var image = req.originalUrl.substring(8, req.originalUrl.length);
 
-    res.redirect(url);  
-  }); /* Cloud storage signed url callback*/
+    cloudstorage.createSignedUrl(image, "GET", 20, function(err, url) {
+        if (err) {
+            throw err;
+            err.status = 404;
+            err.message = "Image not found";
+            return next(err);
+        }
+        console.log("ERR: ");
+        console.log(err)
+        console.log("URL")
+        console.log(url)
+
+        res.redirect(url);
+    }); /* Cloud storage signed url callback*/
 });
 
- 
+
 users.controller(app);
 companies.controller(app);
 artists.controller(app);
@@ -228,27 +236,27 @@ authenticators.controller(app);
  **/
 
 if (app.get('env') === 'development') {
- 
-  app.use(function(err, req, res, next) {
-    console.log(err);
-    res.status(err.status || 500);
-    res.json( {
-        status: "ERROR",
-        message: err.message,
-        error: err
+
+    app.use(function(err, req, res, next) {
+        console.log(err);
+        res.status(err.status || 500);
+        res.json({
+            status: "ERROR",
+            message: err.message,
+            error: err
+        });
     });
-  });
 
 } else {
- 
-  app.use(function(err, req, res, next) {
-      res.status(err.status || 500);
-      res.json( {
-          status: "ERROR",
-          message: err.message,
-          error: {}
-      });
-  });
+
+    app.use(function(err, req, res, next) {
+        res.status(err.status || 500);
+        res.json({
+            status: "ERROR",
+            message: err.message,
+            error: {}
+        });
+    });
 
 }
 
@@ -256,6 +264,5 @@ if (app.get('env') === 'development') {
  * Start the server
  */
 server.listen(app.get('port'), app.get('host'), function() {
-  console.log('Express server listening on port ' + app.get('port'));
+    console.log('Express server listening on port ' + app.get('port'));
 });
-
