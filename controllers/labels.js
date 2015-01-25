@@ -369,7 +369,7 @@ module.exports.controller = function(app) {
      * Upload a file to the dropZone for the label with id :idLabel
      **/
     app.post('/labels/:labelId/dropZone/createFile',
-        authenticationUtils.ensureAuthenticated, ensureLabelManagerOrCompanyOwner),
+        authenticationUtils.ensureAuthenticated, ensureLabelManagerOrCompanyOwner,
         function(req, res, next) {
 
             var labelId = req.params.labelId;
@@ -440,7 +440,7 @@ module.exports.controller = function(app) {
      * If not confirmed the file is never shown to the user
      **/
     app.post('/labels/:labelId/dropZone/confirmFile',
-        authenticationUtils.ensureAuthenticated, ensureLabelManagerOrCompanyOwner),
+        authenticationUtils.ensureAuthenticated, ensureLabelManagerOrCompanyOwner,
         function(req, res, next) {
 
             var labelId = req.params.labelId;
