@@ -326,8 +326,7 @@ module.exports.controller = function(app) {
             console.log(req.uploadedFile)
             console.log("****************")
 
-            model.DropZoneFile.find
-({
+            model.DropZoneFile.find({
                 where: model.Sequelize.and({
                     fileName: req.uploadedFile[0].originalfilename
                 }, {
@@ -364,6 +363,121 @@ module.exports.controller = function(app) {
             });
             //res.send();
         });
+
+    /**
+     * POST /labels/:idLabel/dropZone
+     * Upload a file to the dropZone for the label with id :idLabel
+     **/
+    app.post('/labels/:labelId/dropZone/createFile',
+        authenticationUtils.ensureAuthenticated, ensureLabelManagerOrCompanyOwner,
+        fileUtils.uploadFunction(fileUtils.localImagePath, fileUtils.remoteImagePath),
+        function(req, res, next) {
+
+            var labelId = req.params.labelId;
+            var filename = req.body.filename;
+            var extension = req.body.extension;
+
+            var remotePath = remoteDropZonePath(labelId, filename);
+
+            model.Label.find({
+                where: {
+                    label: labelId
+                }
+            }).then(function(label) {
+                label.getDropZoneFiles({
+                    where: model.Sequelize.and({
+                        fileName: filename
+                    }, {
+                        extension: extension
+                    })
+                }).then(function(files) {
+                    if (!files) {
+                        // Create file
+                        model.DropZoneFile.create({
+                            fileName: filename,
+                            extension: extension,
+                            status: "UPLOADING"
+                        }).success(function(dropZoneFile) {
+                            model.Label.find({
+                                where: {
+                                    id: idLabel
+                                }
+                            }).then(function(label) {
+                                label.addDropZoneFiles(dropZoneFile).then(function(associationFile) {
+                                    if (associationFile) {
+                                        res.json({
+                                            signedUrl: url
+                                        });
+                                    } else {
+                                        var err = new Error();
+                                        err.status = 500;
+                                        err.message = "Failed assigning file to label";
+                                    }
+                                });
+                            });
+                        });
+                    } else {
+                        // update file
+                        var file = files[0];
+                        file.status = "UPLOADING";
+                        file.save().success(function() {
+                            res.json({
+                                signedUrl: url
+                            });
+                            res.send();
+                        }).error(function(err) {
+                            err.status = 500;
+                            err.message = "File upload failed";
+                            return next(err);
+                        });
+                    }
+                });
+            });
+        });
+
+    /**
+     * POST /labels/:idLabel/dropZone
+     * Confirms the upload to the CDN of a file in the label's dropzone
+     * If not confirmed the file is never shown to the user
+     **/
+    app.post('/labels/:labelId/dropZone/confirmFile',
+        authenticationUtils.ensureAuthenticated, ensureLabelManagerOrCompanyOwner,
+        fileUtils.uploadFunction(fileUtils.localImagePath, fileUtils.remoteImagePath),
+        function(req, res, next) {
+
+            var labelId = req.params.labelId;
+            var filename = req.body.filename;
+            var extension = req.body.extension;
+
+            model.Label.find({
+                where: {
+                    label: labelId
+                }
+            }).then(function(label) {
+                label.getDropZoneFiles({
+                    where: model.Sequelize.and({
+                        fileName: filename
+                    }, {
+                        extension: extension
+                    })
+                }).then(function(files) {
+                    if (files) {
+                        file.status = "UPLOADED"
+                            // TODO get metadata and fill other fields?
+                        file.save().success(function() {
+                            res.send();
+                        }).error(function(err) {
+                            err.status = 404;
+                            err.message = "Fine not found in label dropzone";
+                            return next(err);
+                        });
+                    } else {
+
+                    }
+                });
+            });
+        });
+
 
     /**
      * GET /labels/:idLabel/processReleases/info
