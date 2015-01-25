@@ -462,6 +462,10 @@ module.exports.controller = function(app) {
                     })
                 }).then(function(files) {
                     if (files) {
+
+                        // TODO check if file really exists in the CDN before confirming
+
+                        var file = files[0];
                         file.status = "UPLOADED"
                             // TODO get metadata and fill other fields?
                         file.save().success(function() {
