@@ -185,7 +185,7 @@ app.get('/testUpload', function(req, res) {
 /**
  * TODO fix ugly redirect and check for authentication
  **/
-app.get('/images/*', function(req, res) {
+app.get('/images/*', function(req, res, next) {
 
   console.log(req.originalUrl)
 
@@ -199,7 +199,6 @@ app.get('/images/*', function(req, res) {
 
   cloudstorage.createSignedUrl(image, "GET", 20, function(err, url) {
     if (err) {
-      throw err;
       err.status = 404;
       err.message = "Image not found";
       return next(err);
