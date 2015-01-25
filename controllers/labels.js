@@ -369,8 +369,7 @@ module.exports.controller = function(app) {
      * Upload a file to the dropZone for the label with id :idLabel
      **/
     app.post('/labels/:labelId/dropZone/createFile',
-        authenticationUtils.ensureAuthenticated, ensureLabelManagerOrCompanyOwner,
-        fileUtils.uploadFunction(fileUtils.localImagePath, fileUtils.remoteImagePath),
+        authenticationUtils.ensureAuthenticated, ensureLabelManagerOrCompanyOwner),
         function(req, res, next) {
 
             var labelId = req.params.labelId;
@@ -441,8 +440,7 @@ module.exports.controller = function(app) {
      * If not confirmed the file is never shown to the user
      **/
     app.post('/labels/:labelId/dropZone/confirmFile',
-        authenticationUtils.ensureAuthenticated, ensureLabelManagerOrCompanyOwner,
-        fileUtils.uploadFunction(fileUtils.localImagePath, fileUtils.remoteImagePath),
+        authenticationUtils.ensureAuthenticated, ensureLabelManagerOrCompanyOwner),
         function(req, res, next) {
 
             var labelId = req.params.labelId;
@@ -472,7 +470,7 @@ module.exports.controller = function(app) {
                             res.send();
                         }).error(function(err) {
                             err.status = 404;
-                            err.message = "Fine not found in label dropzone";
+                            err.message = "File not found in label dropzone";
                             return next(err);
                         });
                     } else {
