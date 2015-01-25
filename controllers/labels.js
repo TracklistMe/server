@@ -97,6 +97,10 @@ module.exports.controller = function(app) {
     });
   }
 
+  /**
+   * Ensure current user is either company owner or label manager
+   * Label ID must be passed as req.params.labelId
+   **/
   function ensureLabelManagerOrCompanyOwner(req, res, next) {
     var labelId = req.params.labelId;
     var userId = req.user;
@@ -139,7 +143,7 @@ module.exports.controller = function(app) {
    * GET /labels/search/:searchString
    * Return the list of labels whose displayName matches the search string
    */
-  app.get('/labels/search/:searchString', authenticationUtils.ensureAuthenticated, function(req, res, next) {
+  app.get('/labels/search/:searchString', function(req, res, next) {
     var searchString = req.params.searchString;
     model.Label.find({ where: {displayName: searchString} }).then(function(labels) {
       res.send(labels);
