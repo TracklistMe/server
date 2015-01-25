@@ -376,7 +376,7 @@ module.exports.controller = function(app) {
             var filename = req.body.filename;
             var extension = req.body.extension;
 
-            var remotePath = remoteDropZonePath(labelId, filename);
+            var remotePath = fileUtils.remoteDropZonePath(labelId, filename);
 
             model.Label.find({
                 where: {
