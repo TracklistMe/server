@@ -13,7 +13,7 @@ module.exports.controller = function(app) {
      * GET /artists/search/:searchString
      * Return list of all the artists whose displayName matches the searchString
      **/
-    app.get('/artists/search/:searchString', authenticationUtils.ensureAuthenticated, authenticationUtils.ensureAdmin, function(req, res) {
+    app.get('/artists/search/:searchString', function(req, res) {
         var searchString = req.params.searchString;
         model.Artist.findAll({
             where: ["displayName LIKE ?", "%" + searchString + "%"]
