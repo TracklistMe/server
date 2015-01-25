@@ -98,6 +98,7 @@ var DropZoneFile = sequelizeObject.define('DropZoneFile', {
   id: { type: Sequelize.INTEGER, autoIncrement: true, primaryKey: true }, 
   fileName: Sequelize.STRING,
   extension: Sequelize.STRING,
+  status: Sequelize.STRING,
   md5: Sequelize.STRING,
   path: Sequelize.STRING,
   size: Sequelize.BIGINT
