@@ -378,60 +378,67 @@ module.exports.controller = function(app) {
 
             var remotePath = fileUtils.remoteDropZonePath(labelId, filename);
 
-            model.Label.find({
-                where: {
-                    label: labelId
+            cloudstorage.createSignedUrl(remotePath, "GET", 20, function(err, url) {
+                if (err) {
+                    err.status = 500;
+                    err.message = "Could access remote file storage";
+                    return next(err);
                 }
-            }).then(function(label) {
-                label.getDropZoneFiles({
-                    where: model.Sequelize.and({
-                        fileName: filename
-                    }, {
-                        extension: extension
-                    })
-                }).then(function(files) {
-                    if (!files) {
-                        // Create file
-                        model.DropZoneFile.create({
-                            fileName: filename,
-                            extension: extension,
-                            status: "UPLOADING"
-                        }).success(function(dropZoneFile) {
-                            model.Label.find({
-                                where: {
-                                    id: idLabel
-                                }
-                            }).then(function(label) {
-                                label.addDropZoneFiles(dropZoneFile).then(function(associationFile) {
-                                    if (associationFile) {
-                                        res.json({
-                                            signedUrl: url
-                                        });
-                                    } else {
-                                        var err = new Error();
-                                        err.status = 500;
-                                        err.message = "Failed assigning file to label";
+                model.Label.find({
+                    where: {
+                        id: labelId
+                    }
+                }).then(function(label) {
+                    label.getDropZoneFiles({
+                        where: model.Sequelize.and({
+                            fileName: filename
+                        }, {
+                            extension: extension
+                        })
+                    }).then(function(files) {
+                        if (files.length == 0) {
+                            // Create file
+                            model.DropZoneFile.create({
+                                fileName: filename,
+                                extension: extension,
+                                status: "UPLOADING"
+                            }).success(function(dropZoneFile) {
+                                model.Label.find({
+                                    where: {
+                                        id: labelId
                                     }
+                                }).then(function(label) {
+                                    label.addDropZoneFiles(dropZoneFile).then(function(associationFile) {
+                                        if (associationFile) {
+                                            res.json({
+                                                signedUrl: url
+                                            });
+                                        } else {
+                                            var err = new Error();
+                                            err.status = 500;
+                                            err.message = "Failed assigning file to label";
+                                        }
+                                    });
                                 });
                             });
-                        });
-                    } else {
-                        // update file
-                        var file = files[0];
-                        file.status = "UPLOADING";
-                        file.save().success(function() {
-                            res.json({
-                                signedUrl: url
+                        } else {
+                            // update file
+                            var file = files[0];
+                            file.status = "UPLOADING";
+                            file.save().success(function() {
+                                res.json({
+                                    signedUrl: url
+                                });
+                                res.send();
+                            }).error(function(err) {
+                                err.status = 500;
+                                err.message = "File upload failed";
+                                return next(err);
                             });
-                            res.send();
-                        }).error(function(err) {
-                            err.status = 500;
-                            err.message = "File upload failed";
-                            return next(err);
-                        });
-                    }
+                        }
+                    });
                 });
-            });
+            }); /* Cloud storage signed url callback*/
         });
 
     /**
@@ -449,7 +456,7 @@ module.exports.controller = function(app) {
 
             model.Label.find({
                 where: {
-                    label: labelId
+                    id: labelId
                 }
             }).then(function(label) {
                 label.getDropZoneFiles({
@@ -459,9 +466,10 @@ module.exports.controller = function(app) {
                         extension: extension
                     })
                 }).then(function(files) {
-                    if (files) {
+                    if (files.length > 0) {
 
                         // TODO check if file really exists in the CDN before confirming
+                        // TODO get metadata? compute filesize? MD5?
 
                         var file = files[0];
                         file.status = "UPLOADED"
@@ -469,12 +477,14 @@ module.exports.controller = function(app) {
                         file.save().success(function() {
                             res.send();
                         }).error(function(err) {
-                            err.status = 404;
-                            err.message = "File not found in label dropzone";
+                            err.status = 500;
+                            err.message = "File upload failed";
                             return next(err);
                         });
                     } else {
-
+                        err.status = 404;
+                        err.message = "File not found in label dropzone";
+                        return next(err);
                     }
                 });
             });
