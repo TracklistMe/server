@@ -14,7 +14,7 @@ module.exports.controller = function(app) {
    * GET /labels/search/:searchString
    * Return the list of labels whose displayName matches the search string
    */
-  app.get('/labels/search/:searchString', authenticationUtils.ensureAuthenticated, authenticationUtils.ensureAdmin, function(req, res) {
+  app.get('/labels/search/:searchString', authenticationUtils.ensureAuthenticated, authenticationUtils.ensureAdmin, function(req, res, next) {
     var searchString = req.params.searchString;
     model.Label.find({ where: {displayName: searchString} }).then(function(labels) {
       res.send(labels);
@@ -26,16 +26,19 @@ module.exports.controller = function(app) {
    * GET /labels/:id   
    * Return the label corresponding to the passed id
    */
-  app.get('/labels/:id', authenticationUtils.ensureAuthenticated, function(req, res) {
+  app.get('/labels/:id', authenticationUtils.ensureAuthenticated, function(req, res, next) {
     var LabelId = req.params.id;
     model.Label.find({ where: {id: LabelId} }).then(function(label) {
       if(label){
-          label.getUsers({attributes: ['displayName']}).success(function(associatedUsers) {
-              label.dataValues.labelManagers = (associatedUsers);
-              res.send(label);
-          })
-      }else{
-        res.send(label);
+        label.getUsers({attributes: ['displayName']}).success(function(associatedUsers) {
+          label.dataValues.labelManagers = (associatedUsers);
+          res.send(label);
+        })
+      } else {
+        var err = new Error();
+        err.status=404;
+        err.message="Requested label does not exist";
+        return next(err);
       }
     }); 
   });
@@ -45,7 +48,7 @@ module.exports.controller = function(app) {
    * Add label in post payload to the label list of the company 
    * TODO: permission controll, check current user is owner of the company and company owns the label
    **/
-  app.post('/labels/', authenticationUtils.ensureAuthenticated, function(req, res) {
+  app.post('/labels/', authenticationUtils.ensureAuthenticated, function(req, res, next) {
     var companyId = req.body.companyId;
     var labelName = req.body.labelName;
 
@@ -59,11 +62,19 @@ module.exports.controller = function(app) {
             }).success(function(label) {
                   model.Company.find({where: {id: companyId}}).then(function(company) {
                     company.addLabels([label]).success(function(labels) {
-                              res.send();
-                           
+                      //model.User.find({where: {id: req.user}}).then(function(user) {
+                        //label.addUsers([user]).success(function(user) { 
+                          res.send(); 
+                        //});
+                      //});                           
                   });
                 })  
             })
+      } else {
+        var err = new Error();
+        err.status = 409;
+        err.message = "Label name already in use";
+        return next(err);
       }
     });
   }); 
@@ -144,10 +155,18 @@ module.exports.controller = function(app) {
    * GET /labels/:idLabel/processReleases/info
    * Validates the files in the dropZone to a beatport compliant playlist
    **/
-  app.get('/labels/:idLabel/processReleases/info', authenticationUtils.ensureAuthenticated, authenticationUtils.ensureAdmin, function(req, res) {
+  app.get('/labels/:idLabel/processReleases/info', authenticationUtils.ensureAuthenticated, authenticationUtils.ensureAdmin, function(req, res, next) {
       var idLabel = req.params.idLabel;
       model.Label.find({ where: {id: idLabel}}).then(function(label){
-         label.getDropZoneFiles({where: {extension: "xml"}}).then(function(xmls){
+        console.log("The label found for release infos is " + label);
+        if (!label) {
+          var err = new Error();
+          err.status = 404;
+          err.message = "Requested label does not exist";
+          return next(err);
+        }
+        label.getDropZoneFiles({where: {extension: "xml"}}).then(function(xmls){
+
             beatport.validate(xmls).then(function(results){
               res.send(results);
             })
@@ -161,10 +180,16 @@ module.exports.controller = function(app) {
    * POST /labels/:idLabel/processReleases/
    * Asks the server to process files in the dropZone as a new release
    **/
-  app.post('/labels/:idLabel/processReleases/', authenticationUtils.ensureAuthenticated, authenticationUtils.ensureAdmin, function(req, res) {
+  app.post('/labels/:idLabel/processReleases/', authenticationUtils.ensureAuthenticated, authenticationUtils.ensureAdmin, function(req, res, next) {
       var idLabel = req.params.idLabel;
       model.Label.find({ where: {id: idLabel}}).then(function(label){
-         label.getDropZoneFiles({where: {extension: "xml"}}).then(function(xmls){
+        if (!label) {
+          var err = new Error();
+          err.status = 404;
+          err.message = "Requested label does not exist";
+          return next (err);
+        }
+        label.getDropZoneFiles({where: {extension: "xml"}}).then(function(xmls){
             beatport.process(xmls,idLabel).then(function(results){
               console.log("--server response")
               res.send(results);
@@ -177,12 +202,18 @@ module.exports.controller = function(app) {
    * POST /labels/:idLabel/labelManagers/   POST {the id of owner to add}
    * Adds a new manager for the label
    **/
-  app.post('/labels/:labelId/labelManagers', authenticationUtils.ensureAuthenticated, authenticationUtils.ensureAdmin, function(req, res) {
+  app.post('/labels/:labelId/labelManagers', authenticationUtils.ensureAuthenticated, authenticationUtils.ensureAdmin, function(req, res, next) {
     var newLabelManagerId = req.body.newLabelManager;
     var labelId = req.params.labelId
     console.log(labelId);
    
     model.Label.find({where: {id: labelId}}).then(function(label) {
+      if (!label) {
+        var err = new Error();
+        err.status = 404;
+        err.message = "Requested label does not exist";
+        return next (err);
+      }
 
       label.getUsers({ where: {id: newLabelManagerId}}).then(function(users) {
 
@@ -196,6 +227,10 @@ module.exports.controller = function(app) {
         }else{
           
           console.log("This user was already associated to this label!")
+          var err = new Error();
+          err.status = 409;
+          err.message = "The user is already a manager of the selected label";
+          return next (err);
           // TODO, there were an error, need to fix
         }
       })
@@ -206,13 +241,25 @@ module.exports.controller = function(app) {
    * DELETE /labels/:idLabels/labelManagers/:idUser 
    * Delete a manager from the label
    **/
-  app.delete('/labels/:labelId/labelManagers/:userId', authenticationUtils.ensureAuthenticated, authenticationUtils.ensureAdmin, function(req, res) {
+  app.delete('/labels/:labelId/labelManagers/:userId', authenticationUtils.ensureAuthenticated, authenticationUtils.ensureAdmin, function(req, res, next) {
     var userId = req.params.userId;
     var labelId = req.params.labelId
 
 
     model.Label.find({where: {id: labelId}}).then(function(label) {
+        if (!label) {
+        var err = new Error();
+        err.status = 404;
+        err.message = "Requested label does not exist";
+        return next (err);
+      }
       model.User.find({where: {id: userId}}).then(function(user) {
+              if (!user) {
+                var err = new Error();
+                err.status = 404;
+                err.message = "Requested user does not exist";
+                return next (err);
+              }
               label.removeUser(user).success(function() {
                 res.send();
               })
@@ -224,13 +271,18 @@ module.exports.controller = function(app) {
    * GET /labels/:id/dropZoneFiles  
    * Get the list of files in the dropZone
    **/
-  app.get('/labels/:id/dropZoneFiles', authenticationUtils.ensureAuthenticated, function(req, res) {
+  app.get('/labels/:id/dropZoneFiles', authenticationUtils.ensureAuthenticated, function(req, res, next) {
     var LabelId = req.params.id;
     model.Label.find({ where: {id: LabelId} }).then(function(label) {
       if(label){
           label.getDropZoneFiles().success(function(dropZoneFiles) {
               res.send(dropZoneFiles);
           })
+      } else {
+        var err = new Error();
+        err.status = 404;
+        err.message = "Requested label does not exist";
+        return next (err);
       }
     }); 
   });
@@ -240,13 +292,18 @@ module.exports.controller = function(app) {
    * GET /labels/id/catalog
    * Get all releases associated to the label
    **/
-  app.get('/labels/:id/catalog', authenticationUtils.ensureAuthenticated, function(req, res) {
+  app.get('/labels/:id/catalog', authenticationUtils.ensureAuthenticated, function(req, res, next) {
     var LabelId = req.params.id;
     model.Label.find({ where: {id: LabelId} }).then(function(label) {
       if(label){
           label.getReleases().success(function(releases) {
               res.send(releases);
           })
+      } else {
+        var err = new Error();
+        err.status = 404;
+        err.message = "Requested label does not exist";
+        return next (err);
       }
     }); 
   });
