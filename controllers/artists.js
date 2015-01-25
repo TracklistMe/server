@@ -108,4 +108,33 @@ module.exports.controller = function(app) {
     });
   }); 
 
+    /**
+   * POST /artists/:idArtist/profilePicture/:width/:height/
+   * Upload artist profile picture to the CDN, original size and resized
+   **/
+  app.post('/artists/:idArtist/profilePicture/:width/:height/', 
+    authenticationUtils.ensureAuthenticated, 
+    fileUtils.uploadFunction(fileUtils.localImagePath, fileUtils.remoteImagePath), 
+    fileUtils.resizeFunction(fileUtils.localImagePath, fileUtils.remoteImagePath),  
+    function (req, res, next) {
+      var idArtist = req.params.idArtist;
+      model.Artist.find({ where: {id: idArtist} }).then(function(artist) {
+        var oldAvatar = artist.avatar; 
+        artist.avatar = fileUtils.remoteImagePath(req, req.uploadedFile[0].resizedFilename); 
+
+        artist.save().then(function (artist) {
+          // we remove old avatars from the CDN
+          cloudstorage.remove(oldAvatar); 
+          // We remove temporarily stored files
+          fs.unlink(fileUtils.localImagePath(req, req.uploadedFile[0].filename));
+          fs.unlink(fileUtils.localImagePath(req, req.uploadedFile[0].resizedFilename));
+
+          res.writeHead(200, {"content-type":"text/html"});   //http response header
+          res.end(JSON.stringify(req.uploadedFile));
+        });
+      }); 
+    });
+
+
+
 } /* End of artists controller */

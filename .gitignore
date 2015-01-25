@@ -5,5 +5,6 @@ bower_components
 log
 config
 config.js
+config/
 uploadFolder/
 !node_module/libs/beatport/beatportProxy.js
