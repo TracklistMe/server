@@ -9,6 +9,7 @@ var fileUtils = rootRequire('utils/file-utils');
 var authenticationUtils = rootRequire('utils/authentication-utils');
 var model = rootRequire('models/model');
 var config = rootRequire('config/config');
+var jwt = require('jwt-simple');
 var request = require('request');
 
 
