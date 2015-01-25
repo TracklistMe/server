@@ -141,9 +141,21 @@ module.exports.controller = function(app) {
 
   /**
    * GET /labels/search/:searchString
-   * Return the list of labels whose displayName matches the search string
+   * Return the list of labels whose displayName resambles the search string
+   * TODO: paginate request
    */
   app.get('/labels/search/:searchString', function(req, res, next) {
+    var searchString = req.params.searchString;
+    model.Label.find({ where: ["displayName LIKE ?", "%"+searchString+"%"] }).then(function(labels) {
+      res.send(labels);
+    });
+  });
+
+  /**
+   * GET /labels/search/:searchString
+   * Return the list of labels whose displayName exactly matches the search string
+   */
+  app.get('/labels/searchExact/:searchString', function(req, res, next) {
     var searchString = req.params.searchString;
     model.Label.find({ where: {displayName: searchString} }).then(function(labels) {
       res.send(labels);
@@ -155,7 +167,7 @@ module.exports.controller = function(app) {
    * GET /labels/:id   
    * Return the label corresponding to the passed id
    */
-  app.get('/labels/:labelId', authenticationUtils.ensureAuthenticated, ensureLabelManagerOrCompanyOwner, function(req, res, next) {
+  app.get('/labels/:labelId', authenticationUtils.ensureAuthenticated, function(req, res, next) {
     var LabelId = req.params.labelId;
     model.Label.find({ where: {id: LabelId} }).then(function(label) {
       if(label){
