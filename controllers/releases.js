@@ -49,7 +49,8 @@ module.exports.controller = function(app) {
     
     console.log('begin chain of sequelize commands');
     // UPDATE THE RELEASE
-    model.Release.find({where: {id:releaseId}}).then(function(newRelease) {
+    model.Release
+.find({where: {id:releaseId}}).then(function(newRelease) {
         var trackUpdatePromises = [];
 
         for (var i = release.Tracks.length - 1; i >= 0; i--) {
