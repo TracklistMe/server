@@ -426,11 +426,13 @@ module.exports.controller = function(app) {
                             var file = files[0];
                             file.status = "UPLOADING";
                             file.save().success(function() {
-                                var policy = cloudstorage.createSignedPolicy(remotePath, 20, 104857600, "Any Content type")
+                                var expiration = new Date(Date.now() + 20*1000);
+                                var policy = cloudstorage.createSignedPolicy(remotePath, expiration, 104857600, "Any Content type")
                                 //res.json({
                                 //    signedUrl: url
                                 //});
                                 res.json({
+                                    Expires: expiration.toISOString(),
                                     action: cloudstorage.getBucketUrl(),
                                     method: 'POST',
                                     key: remotePath,

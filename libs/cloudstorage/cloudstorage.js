@@ -77,9 +77,9 @@ exports.createSignedUrl = createSignedUrl;
  * Creates a policy and its signature
  * TODO handle contentType 
  **/
-function createSignedPolicy(key, timeToLive, maxByteSize, contentType) {
+function createSignedPolicy(key, expiration, maxByteSize, contentType) {
   var policy = {
-    expires : new Date(Date.now() + timeToLive*1000).toISOString(),
+    expiration : expiration.toISOString(),
     conditions : [
       ["eq", "$key", key],
       ["content-length-range", 0, maxByteSize],
