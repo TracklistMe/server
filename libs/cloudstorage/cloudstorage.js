@@ -43,7 +43,7 @@ function createSignedUrl(key, method, timeToLive, callback) {
       break;
   }
   var file = bucket.file(key);
-  options.expires: Math.round(Date.now() / 1000) + timeToLive
+  options.expires = Math.round(Date.now() / 1000) + timeToLive;
   file.getSignedUrl(options, callback);
 }
 
