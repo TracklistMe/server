@@ -433,6 +433,7 @@ module.exports.controller = function(app) {
                                 res.json({
                                     action: cloudstorage.getBucketUrl(),
                                     method: 'POST',
+                                    key: remotePath,
                                     GoogleAccessId:  cloudstorage.getGoogleAccessEmail(),
                                     policy: policy.policy,
                                     signature: policy.signature
