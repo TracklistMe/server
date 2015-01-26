@@ -378,7 +378,7 @@ module.exports.controller = function(app) {
 
             var remotePath = fileUtils.remoteDropZonePath(labelId, filename);
 
-            cloudstorage.createSignedUrl(remotePath, "GET", 20, function(err, url) {
+            cloudstorage.createSignedUrl(remotePath, "PUT", 20, function(err, url) {
                 if (err) {
                     err.status = 500;
                     err.message = "Could access remote file storage";
