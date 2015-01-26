@@ -426,8 +426,16 @@ module.exports.controller = function(app) {
                             var file = files[0];
                             file.status = "UPLOADING";
                             file.save().success(function() {
+                                var policy = cloudstorage.createSignedPolicy(remotePath, 20, 104857600, "Any Content type")
+                                //res.json({
+                                //    signedUrl: url
+                                //});
                                 res.json({
-                                    signedUrl: url
+                                    action: cloudstorage.getBucketUrl(),
+                                    method: 'POST',
+                                    GoogleAccessId:  cloudstorage.getGoogleAccessEmail(),
+                                    policy: policy.policy,
+                                    signature: policy.signature
                                 });
                                 res.send();
                             }).error(function(err) {

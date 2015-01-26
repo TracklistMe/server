@@ -10,6 +10,28 @@ var gcloud            = require('gcloud')({
                         });
 
 var bucket = gcloud.storage().bucket(config.BUCKET_NAME);
+var googlePrivateKey = JSON.parse(fs.readFileSync(config.GOOGLE_DEVELOPER_KEY_PATH, 'utf8')).private_key;
+console.log(googlePrivateKey)
+var googleAccessEmail = JSON.parse(fs.readFileSync(config.GOOGLE_DEVELOPER_KEY_PATH, 'utf8')).client_email;
+console.log(googleAccessEmail)
+
+/**
+ * Returns the https url of the bucket
+ **/
+function getBucketUrl() {
+  return "https://"+config.BUCKET_NAME+".storage.googleapis.com";
+} 
+
+exports.getBucketUrl = getBucketUrl;
+
+/**
+ * Returns the https url of the bucket
+ **/
+function getGoogleAccessEmail() {
+  return googleAccessEmail;
+} 
+
+exports.getGoogleAccessEmail = getGoogleAccessEmail;
 
 /**
  * Function to create signed urls to google cloud storage
@@ -49,8 +71,39 @@ function createSignedUrl(key, method, timeToLive, callback) {
 
 exports.createSignedUrl = createSignedUrl;
 
+
 /**
- * Uploads a file to Cloud Storage
+ * Creates a policy and its signature
+ **/
+function createSignedPolicy(key, timeToLive, maxByteSize, contentType) {
+  var policy = {
+    expires : new Date(Date.now() + timeToLive*1000).toISOString(),
+    conditions : [
+      ["eq", "$key", key],
+      ["content-length-range", 0, maxByteSize],
+      {"bucket": config.BUCKET_NAME}
+    ]
+  };
+  
+  var policyString = JSON.stringify(policy);
+  console.log(policyString);
+  var policyBase64 = new Buffer(policyString).toString('base64');
+  console.log(policyBase64);
+  var sign = crypto.createSign('RSA-SHA256');
+  sign.update(policyBase64);
+  var signature = sign.sign(googlePrivateKey, 'base64');
+  console.log(signature);
+  var signatureBase64 = new Buffer(signature).toString('base64');
+  console.log(signatureBase64);
+
+
+  return {policy: policyBase64, signature: signatureBase64};
+}
+
+exports.createSignedPolicy = createSignedPolicy;
+
+/**
+ * Uploads a file to Cloud Storage0
  */
 function upload(filename, filepath, callback) {
 /*
