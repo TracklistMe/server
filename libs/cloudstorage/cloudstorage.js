@@ -9,10 +9,11 @@ var gcloud            = require('gcloud')({
                           projectId: config.GOOGLE_PROJECT_NAME
                         });
 
+var credentials = require(config.GOOGLE_DEVELOPER_KEY_PATH);
 var bucket = gcloud.storage().bucket(config.BUCKET_NAME);
-var googlePrivateKey = JSON.parse(fs.readFileSync(config.GOOGLE_DEVELOPER_KEY_PATH, 'utf8')).private_key;
+var googlePrivateKey = credentials.private_key;
 console.log(googlePrivateKey)
-var googleAccessEmail = JSON.parse(fs.readFileSync(config.GOOGLE_DEVELOPER_KEY_PATH, 'utf8')).client_email;
+var googleAccessEmail = credentials.client_email;
 console.log(googleAccessEmail)
 
 /**
@@ -74,6 +75,7 @@ exports.createSignedUrl = createSignedUrl;
 
 /**
  * Creates a policy and its signature
+ * TODO handle contentType 
  **/
 function createSignedPolicy(key, timeToLive, maxByteSize, contentType) {
   var policy = {
@@ -93,11 +95,8 @@ function createSignedPolicy(key, timeToLive, maxByteSize, contentType) {
   sign.update(policyBase64);
   var signature = sign.sign(googlePrivateKey, 'base64');
   console.log(signature);
-  var signatureBase64 = new Buffer(signature).toString('base64');
-  console.log(signatureBase64);
 
-
-  return {policy: policyBase64, signature: signatureBase64};
+  return {policy: policyBase64, signature: signature};
 }
 
 exports.createSignedPolicy = createSignedPolicy;
