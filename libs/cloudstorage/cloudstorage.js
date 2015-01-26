@@ -26,26 +26,25 @@ function createSignedUrl(key, method, timeToLive, callback) {
     callback(err);
     return;
   }
-  var action;
+  var options = {};
   switch (method) {
     case 'GET':
-      action = 'read';    
+      options.action = 'read';    
       break;
     case 'PUT':
-      action = 'write';
+      options.action = 'write';
+      options.contentType = 'application/json;charset=utf-8';
       break;
     case 'DELETE':
-      action = 'delete';
+      options.action = 'delete';
       break;
     default: 
       action = 'read';    
       break;
   }
   var file = bucket.file(key);
-  file.getSignedUrl({
-    action: action,
-    expires: Math.round(Date.now() / 1000) + timeToLive
-  }, callback);
+  options.expires: Math.round(Date.now() / 1000) + timeToLive
+  file.getSignedUrl(options, callback);
 }
 
 exports.createSignedUrl = createSignedUrl;
