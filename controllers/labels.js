@@ -316,7 +316,7 @@ module.exports.controller = function(app) {
      * POST /labels/:idLabel/dropZone
      * Upload a file to the dropZone for the label with id :idLabel
      **/
-    app.post('/labels/:labelId/dropZone/',
+    app.put('/labels/:labelId/dropZone/',
         authenticationUtils.ensureAuthenticated, ensureLabelManagerOrCompanyOwner,
         fileUtils.uploadFunction(fileUtils.localImagePath, fileUtils.remoteImagePath),
         function(req, res, next) {
