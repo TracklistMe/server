@@ -25,6 +25,7 @@ var logger = require('morgan');
 var mongoose = require('mongoose');
 var request = require('request');
 var multipart = require('connect-multiparty');
+var expressValidator = require('express-validator')
 
 
 var config = rootRequire('config/config');
@@ -117,6 +118,7 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({
     extended: true
 }));
+app.use(expressValidator());
 app.use(function(req, res, next) {
 
     // Website you wish to allow to connect
@@ -241,8 +243,9 @@ if (app.get('env') === 'development') {
         console.log(err);
         res.status(err.status || 500);
         res.json({
-            status: "ERROR",
+            status: err.status,
             message: err.message,
+            validation: err.validation,
             error: err
         });
     });
@@ -254,6 +257,7 @@ if (app.get('env') === 'development') {
         res.json({
             status: "ERROR",
             message: err.message,
+            validation: err.validation,
             error: {}
         });
     });
