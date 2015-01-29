@@ -12,9 +12,7 @@ var gcloud            = require('gcloud')({
 var credentials = require(config.GOOGLE_DEVELOPER_KEY_PATH);
 var bucket = gcloud.storage().bucket(config.BUCKET_NAME);
 var googlePrivateKey = credentials.private_key;
-console.log(googlePrivateKey)
 var googleAccessEmail = credentials.client_email;
-console.log(googleAccessEmail)
 
 /**
  * Returns the https url of the bucket
