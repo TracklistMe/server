@@ -141,3 +141,13 @@ function remove(filename, callback) {
 }
 
 exports.remove = remove;
+
+/**
+ * Create a read stream for a file corresponding to filename
+ **/
+function createReadStream(filename) {
+  var file = bucket.file(filename);
+  return file.createReadStream();
+}
+
+exports.createReadStream = createReadStream;
