@@ -422,7 +422,7 @@ module.exports.controller = function(app) {
             var extension = req.body.extension;
             var size = req.body.size;
 
-            var remotePath = fileUtils.remoteDropZonePath(labelId, filename);
+            var remotePath = fileUtils.remoteDropZonePath(labelId, filename + "." +extension);
 
             model.Label.find({
                 where: {
@@ -442,7 +442,8 @@ module.exports.controller = function(app) {
                             fileName: filename,
                             extension: extension,
                             status: "UPLOADING",
-                            size: size
+                            size: size,
+                            path: remotePath
                         }).success(function(dropZoneFile) {
                             model.Label.find({
                                 where: {
@@ -474,6 +475,7 @@ module.exports.controller = function(app) {
                         var file = files[0];
                         file.status = "UPLOADING";
                         file.size = size;
+                        file.path = remotePath;
                         file.save().success(function() {
                             var expiration = new Date(Date.now() + 20 * 1000);
                             var policy = cloudstorage.createSignedPolicy(remotePath, expiration, 104857600, "Any Content type");
