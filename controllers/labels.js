@@ -422,7 +422,7 @@ module.exports.controller = function(app) {
             var extension = req.body.extension;
             var size = req.body.size;
 
-            var remotePath = fileUtils.remoteDropZonePath(labelId, filename + "." +extension);
+            var remotePath = fileUtils.remoteDropZonePath(labelId, filename + "." + extension);
 
             model.Label.find({
                 where: {
@@ -591,11 +591,14 @@ module.exports.controller = function(app) {
                 return next(err);
             }
             label.getDropZoneFiles({
-                where: {
+                where: model.Sequelize.and({
                     extension: "xml"
-                }
-            }).then(function(xmls) {
+                }, {
+                    status: "UPLOADED"
+                })
 
+            }).then(function(xmls) {
+                console.log(xmls)
                 beatport.validate(xmls).then(function(results) {
                     res.send(results);
                 })
