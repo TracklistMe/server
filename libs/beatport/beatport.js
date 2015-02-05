@@ -110,59 +110,63 @@ function validateFile(xmlPath) {
             fs.readFile(filename, "utf8", function(err, data) {
                 console.log(data);
 
-
-                var parser = new xml2js.Parser();
-                parser.parseString(data, function(err, result) {
-                    // totalFileExpected = all the tracks + cover
-                    fs.unlink(filename)
-                    var totalFileExpected = result.release.tracks[0].track.length + 1;
-                    // remember that the parser always ask to refear to a field as an array, 
-                    // so if you can access a variable, try to att [0] at the end
-                    // CHECK IF THE COVER IS AVAILABLE
-                    //console.log(util.inspect(result, false, null))
-                    var coverFileName = result.release.coverArtFilename[0].split(".")[0];
-                    var coverExtension = result.release.coverArtFilename[0].split(".")[1];
-                    //console.log(result.release.tracks[0].track)
-                    var allAndObjects = []
-                    var orObject = dbProxy.Sequelize.or();
-                    // ADD THE COVER 
-                    allAndObjects.push(dbProxy.Sequelize.and({
-                            fileName: coverFileName
-                        }, {
-                            extension: coverExtension
-                        }))
-                        // ADD ALL THE OTHER TRACKS
-                    for (var j = 0; j < result.release.tracks[0].track.length; j++) {
-                        var fileName = result.release.tracks[0].track[j].trackAudioFile[0].audioFilename[0].split(".")[0]
-                        var extension = result.release.tracks[0].track[j].trackAudioFile[0].audioFilename[0].split(".")[1]
-                        var andObject = dbProxy.Sequelize.and({
-                            fileName: fileName
-                        }, {
-                            extension: extension
-                        })
-                        allAndObjects.push(andObject)
-                    }
-                    // TRICK TO ADD ALL THE AND IN OR BETWEEN THEM
-                    var orObject = dbProxy.Sequelize.or.apply(null, allAndObjects)
-                    dbProxy.DropZoneFile.findAndCountAll({
-                        where: orObject
-                    }).then(function(files) {
-                        var releaseResult;
-                        console.log(totalFileExpected + "-" + files.count)
-                        if (totalFileExpected == files.count) {
-                            releaseResult = {
-                                release: result.release.catalogNumber[0],
-                                status: CORRECT
-                            }
-                        } else {
-                            releaseResult = {
-                                release: result.release.catalogNumber[0],
-                                status: FAIL
-                            }
+                try {
+                    var parser = new xml2js.Parser();
+                    parser.parseString(data, function(err, result) {
+                        // totalFileExpected = all the tracks + cover
+                        fs.unlink(filename)
+                        var totalFileExpected = result.release.tracks[0].track.length + 1;
+                        // remember that the parser always ask to refear to a field as an array, 
+                        // so if you can access a variable, try to att [0] at the end
+                        // CHECK IF THE COVER IS AVAILABLE
+                        //console.log(util.inspect(result, false, null))
+                        var coverFileName = result.release.coverArtFilename[0].split(".")[0];
+                        var coverExtension = result.release.coverArtFilename[0].split(".")[1];
+                        //console.log(result.release.tracks[0].track)
+                        var allAndObjects = []
+                        var orObject = dbProxy.Sequelize.or();
+                        // ADD THE COVER 
+                        allAndObjects.push(dbProxy.Sequelize.and({
+                                fileName: coverFileName
+                            }, {
+                                extension: coverExtension
+                            }))
+                            // ADD ALL THE OTHER TRACKS
+                        for (var j = 0; j < result.release.tracks[0].track.length; j++) {
+                            var fileName = result.release.tracks[0].track[j].trackAudioFile[0].audioFilename[0].split(".")[0]
+                            var extension = result.release.tracks[0].track[j].trackAudioFile[0].audioFilename[0].split(".")[1]
+                            var andObject = dbProxy.Sequelize.and({
+                                fileName: fileName
+                            }, {
+                                extension: extension
+                            })
+                            allAndObjects.push(andObject)
                         }
-                        deferred.resolve(releaseResult);
+                        // TRICK TO ADD ALL THE AND IN OR BETWEEN THEM
+                        var orObject = dbProxy.Sequelize.or.apply(null, allAndObjects)
+                        dbProxy.DropZoneFile.findAndCountAll({
+                            where: orObject
+                        }).then(function(files) {
+                            var releaseResult;
+                            console.log(totalFileExpected + "-" + files.count)
+                            if (totalFileExpected == files.count) {
+                                releaseResult = {
+                                    release: result.release.catalogNumber[0],
+                                    status: CORRECT
+                                }
+                            } else {
+                                releaseResult = {
+                                    release: result.release.catalogNumber[0],
+                                    status: FAIL
+                                }
+                            }
+                            deferred.resolve(releaseResult);
+                        })
                     })
-                })
+                } catch (err) {
+                    console.log(err.message);
+                    console.log(err);
+                }
             });
 
         });
@@ -254,6 +258,8 @@ function packRelease(xmlPath, idLabel) {
                                     where: {
                                         path: cdnCover
                                     }
+                                }).then(function(file) {
+                                    file.destroy()
                                 })
                             );
 
@@ -264,6 +270,8 @@ function packRelease(xmlPath, idLabel) {
                                     where: {
                                         path: xmlPath
                                     }
+                                }).then(function(file) {
+                                    file.destroy()
                                 })
                             );
 

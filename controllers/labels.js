@@ -825,7 +825,9 @@ module.exports.controller = function(app) {
             }
         }).then(function(label) {
             if (label) {
-                label.getReleases().success(function(releases) {
+                label.getReleases({
+                    order: 'catalogNumber DESC'
+                }).success(function(releases) {
                     res.send(releases);
                 })
             } else {

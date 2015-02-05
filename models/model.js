@@ -175,6 +175,7 @@ var Release = sequelizeObject.define('Release', {
     GRid: Sequelize.STRING,
     description: Sequelize.STRING,
     status: Sequelize.STRING,
+    json: Sequelize.STRING,
     type: Sequelize.ENUM('release', 'album', 'compilation')
 });
 
