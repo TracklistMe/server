@@ -24,6 +24,7 @@ module.exports.controller = function(app) {
             where: {
                 id: releaseId
             },
+            order: 'position',
             include: [{
                 model: model.Track,
                 include: [{
@@ -41,42 +42,46 @@ module.exports.controller = function(app) {
         }).then(function(release) {
             console.log(release.dataValues)
 
-            var jsonObject = util.inspect(release.dataValues);
-            console.log(jsonObject)
-            release.updateAttributes({
-                json: jsonObject
-            })
+
             res.send(release);
         });
     });
 
-    function toJSONWithoutCircularReferences(o) {
-        console.log("CONVERT TO JSON")
+    /** POST  /release/
+      create a release
+     */
 
-        var cache = [];
-        JSON.stringify(o, function(key, value) {
-            if (typeof value === 'object' && value !== null) {
-                if (cache.indexOf(value) !== -1) {
-                    // Circular reference found, discard key
-                    return;
-                }
-                // Store value in our collection
-                cache.push(value);
+    app.post('/releases/', authenticationUtils.ensureAuthenticated, authenticationUtils.ensureAdmin, function(req, res) {
+
+        var release = req.body.release;
+        var idLabel = req.body.idLabel;
+        console.log("____________" + idLabel)
+        console.log("ADD RELEASE")
+        console.log(release)
+        model.Label.find({
+            where: {
+                id: idLabel
             }
-            return value;
-        });
-        cache = null;
-    }
+        }).then(function(label) {
+            model.Release.create(release).
+            then(function(newRelease) {
+                label.addReleases(newRelease).then(function(association) {
+                    res.send(newRelease);
+                })
+            })
+        })
+    })
 
     /**
      * PUT /releases/:id
      * Update a release
-     * TODO why user has to be admin?
+     * TODO we should have POST FOR UPDATe and PUT FOR CREATE....
      **/
     app.put('/releases/:id', authenticationUtils.ensureAuthenticated, authenticationUtils.ensureAdmin, function(req, res) {
         var releaseId = req.params.id
 
         var release = req.body.release;
+
         // update the 
 
         console.log('begin chain of sequelize commands');
@@ -87,8 +92,8 @@ module.exports.controller = function(app) {
                     id: releaseId
                 }
             }).then(function(newRelease) {
+                newRelease.updateAttributes(release);
                 var trackUpdatePromises = [];
-
                 for (var i = release.Tracks.length - 1; i >= 0; i--) {
                     trackUpdatePromises.push(
                             model.Track.find({
@@ -96,6 +101,7 @@ module.exports.controller = function(app) {
                                     id: release.Tracks[i].id
                                 }
                             }).then(function(track) {
+
                                 // UPDATE TRACK INFO:
                                 var deferred = Q.defer();
 
@@ -105,6 +111,11 @@ module.exports.controller = function(app) {
                                         jsonTrack = release.Tracks[i];
                                     }
                                 }
+
+                                newRelease.addTrack(track, {
+                                    position: jsonTrack.ReleaseTracks.position
+                                })
+
 
                                 track.updateAttributes(jsonTrack).then(function(newTrack) {
                                         // SET THE ARTISTS
@@ -123,8 +134,14 @@ module.exports.controller = function(app) {
                                             newRemixers.push(jsonTrack.Remixer[i].id);
                                         };
 
+
+
                                         // Q.all  accept an array of promises functions. Call the done when all are successful
-                                        Q.all([track.setRemixer(newRemixers), track.setProducer(newProducers)]).done(function() {
+                                        Q.all([
+
+                                            track.setRemixer(newRemixers),
+                                            track.setProducer(newProducers)
+                                        ]).done(function() {
                                             deferred.resolve();
                                         });
 
@@ -133,8 +150,7 @@ module.exports.controller = function(app) {
                                     // I NEED TO RETURN HERE A PROMIXE 
                                 return deferred.promise;
 
-                            })
-                        ) // push into trackUpdate Promises 
+                            })) // push into trackUpdate Promises 
                 };
 
                 Q.allSettled(trackUpdatePromises)

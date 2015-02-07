@@ -139,6 +139,8 @@ function validateFile(xmlPath) {
                                 fileName: fileName
                             }, {
                                 extension: extension
+                            }, {
+                                status: "UPLOADED"
                             })
                             allAndObjects.push(andObject)
                         }

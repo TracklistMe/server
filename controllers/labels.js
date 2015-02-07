@@ -549,11 +549,13 @@ module.exports.controller = function(app) {
                         }).error(function(err) {
                             err.status = 500;
                             err.message = "File upload failed";
+                            console.log("File upload failed")
                             return next(err);
                         });
                     } else {
                         err.status = 404;
                         err.message = "File not found in label dropzone";
+                        console.log("File not found in label dropzone")
                         return next(err);
                     }
                 });
