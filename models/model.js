@@ -191,7 +191,10 @@ var Track = sequelizeObject.define('Track', {
     title: Sequelize.STRING,
     version: Sequelize.STRING,
     cover: Sequelize.STRING,
-    path: Sequelize.STRING
+    path: Sequelize.STRING,
+    mp3Path : Sequelize.STRING,
+    snippetPath : Sequelize.STRING,
+    waveform : Sequelize.TEXT
 });
 exports.Track = Track;
 
