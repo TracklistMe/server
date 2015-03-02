@@ -41,7 +41,7 @@ var artists = rootRequire('controllers/artists.js');
 var labels = rootRequire('controllers/labels.js');
 var releases = rootRequire('controllers/releases.js');
 var authenticators = rootRequire('controllers/authenticators.js');
-
+var stripePayment = rootRequire('controllers/stripePayment.js');
 /*
  * Require models
  */
@@ -230,6 +230,7 @@ artists.controller(app);
 labels.controller(app);
 releases.controller(app);
 authenticators.controller(app);
+stripePayment.controller(app);
 
 /**
  * Error handlers have to be defined after all routes
