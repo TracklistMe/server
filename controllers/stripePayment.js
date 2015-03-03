@@ -50,42 +50,45 @@ module.exports.controller = function(app) {
                     packURL = 'samplePackages/FullCollection.zip';
                     break;
                 case 2:
-                    packURL = 'samplePackages/Vol1.zip';
+                    packURL = 'samplePackages/Vol3.zip';
                     break;
                 case 3:
                     packURL = 'samplePackages/Vol2.zip';
                     break;
                 case 4:
-                    packURL = 'samplePackages/Vol3.zip';
+                    packURL = 'samplePackages/Vol1.zip';
                     break;
             }
-           cloudstorage.createSignedUrl(packURL, "GET", 100, function(err, url) {
-                if (err) {
-                    //throw err;
-                    err.status = 404;
-                    err.message = "Image not found";
-                    return next(err);
-                }
- 
-                console.log(url)
-                cloudURL = url;
-            }); /* Cloud storage signed url callback*/
 
-
-          var charge =  stripe.charges.create({
+        stripe.charges.create({
             amount: value,
             currency: currency,
             customer: customer.id,
-            metadata: {product: idproduct},
-            url: cloudURL
-          });
+            metadata: {product: idproduct, url: cloudURL},
+          }, function(err, charge) {
+             if (!err) {
+
+                 cloudstorage.createSignedUrl(packURL, "GET", 100, function(err, url) {
+                        if (err) {
+                            //throw err;
+                            err.status = 404;
+                            err.message = "File not found";
+                            return next(err);
+                        }
+         
+                        console.log(url)
+                        cloudURL = url;
+                          res.send(url);
+                    }); /* Cloud storage signed url callback*/
+
+
+                   //res.send(charge);
+               }
+            });
+
 
           // Here fetch the cloud link to the product that has been purcheased.
-          res.send(charge);
-        }).then(function(charge) {
-          // New charge created on a new customer
-        }, function(err) {
-          // Deal with an error
+          
         });
     });
 
