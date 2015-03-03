@@ -39,13 +39,45 @@ module.exports.controller = function(app) {
         console.log("token"+value)
         stripe.customers.create({
           source: token,
-          email: email
+          email: email  
         }).then(function(customer) {
+
+
+            var cloudURL = ''
+            var packURL = ''
+             switch (idproduct) {
+                case 1:
+                    packURL = 'samplePackages/FullCollection.zip';
+                    break;
+                case 2:
+                    packURL = 'samplePackages/Vol1.zip';
+                    break;
+                case 3:
+                    packURL = 'samplePackages/Vol2.zip';
+                    break;
+                case 4:
+                    packURL = 'samplePackages/Vol3.zip';
+                    break;
+            }
+           cloudstorage.createSignedUrl(packURL, "GET", 100, function(err, url) {
+                if (err) {
+                    //throw err;
+                    err.status = 404;
+                    err.message = "Image not found";
+                    return next(err);
+                }
+ 
+                console.log(url)
+                cloudURL = url;
+            }); /* Cloud storage signed url callback*/
+
+
           var charge =  stripe.charges.create({
             amount: value,
             currency: currency,
             customer: customer.id,
-            metadata: {product: idproduct}
+            metadata: {product: idproduct},
+            url: cloudURL
           });
 
           // Here fetch the cloud link to the product that has been purcheased.
