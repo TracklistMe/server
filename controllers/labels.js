@@ -452,7 +452,7 @@ module.exports.controller = function(app) {
                             }).then(function(label) {
                                 label.addDropZoneFiles(dropZoneFile).then(function(associationFile) {
                                     if (associationFile) {
-                                        var expiration = new Date(Date.now() + 20 * 1000);
+                                        var expiration = new Date(Date.now() + 60 * 1000);
                                         var policy = cloudstorage.createSignedPolicy(remotePath, expiration, 104857600, "Any Content type");
                                         res.json({
                                             Expires: expiration.toISOString(),
@@ -585,7 +585,8 @@ module.exports.controller = function(app) {
                 id: idLabel
             }
         }).then(function(label) {
-            console.log("The label found for release infos is " + label);
+            console.log("==================================================");
+            console.log("The label found for release infos is " + JSON.stringify(label.dataValues));
             if (!label) {
                 var err = new Error();
                 err.status = 404;
