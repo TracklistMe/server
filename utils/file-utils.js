@@ -63,6 +63,12 @@ function remoteDropZonePath(labelId, filename) {
 
 exports.remoteDropZonePath = remoteDropZonePath;
 
+function remoteReleasePath(releaseId, filename) {
+    return 'releases/' + releaseId + "/" + filename;
+}
+
+exports.remoteDropZonePath = remoteDropZonePath;
+
 /**
  * Generator of upload functions
  * localPathBuilder: given a filename returns local file path
