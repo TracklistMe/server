@@ -9,8 +9,211 @@ var authenticationUtils = rootRequire('utils/authentication-utils');
 var model = rootRequire('models/model');
 var cloudstorage = rootRequire('libs/cloudstorage/cloudstorage');
 var beatport = rootRequire('libs/beatport/beatport');
+var rabbitmq = rootRequire('rabbitmq/rabbitmq');
 
 module.exports.controller = function(app) {
+
+
+    // 1) Restore DropZoneFiles entries for metadataFile, lossless tracks and cover
+    // 2) Remove tracks
+    function rollbackRelease(databaseRelease) {
+
+        databaseRelease.status = "PROCESSING_FAILED";
+        
+        for (var i =0; i < release.Tracks.length; i++) { 
+            var track = release.Tracks[i];   
+            
+            // Restore track dropzone files
+            model.Tracks.find({
+                where: {
+                    id: track.id
+                }
+            }).then(function(databaseTrack){
+                model.DropZoneFile.find({
+                    where: {
+                        path: databaseTrack.path
+                    }
+                }).then(function(file) {
+                    file.status = "UPLOADED";
+                    file.save();
+                });
+            });
+        }
+
+        // Restore cover dropzone file
+        model.DropZoneFile.find({
+            where: {
+                path: databaseRelease.cover
+            }
+        }).then(function(file) {
+            file.status = "UPLOADED";
+            file.save();
+        });
+
+        // Restore metadata file
+        model.DropZoneFile.find({
+            where: {
+                path: databaseRelease.metadataFile
+            }
+        }).then(function(file) {
+            file.status = "UPLOADED";
+            file.save();
+        });
+
+        databaseRelease.save();
+    }
+
+    // 1) Store tracks paths
+    // 2) Move tracks lossless files
+    // 3) Move release cover
+    // 4) Remove DropZoneFiles entries
+    // 5) Remove metadata file, if any
+    function commitRelease(release, databaseRelease) {
+
+        databaseRelease.status = "PROCESSED";
+
+        var promises = [];
+
+        for (var i =0; i < release.Tracks.length; i++) { 
+            var track = release.Tracks[i];   
+            
+            // Updated track
+            var deferredUpdate = Q.defer();
+            model.Tracks.find({
+                where: {
+                    id: track.id
+                }
+            }).then(function(databaseTrack){
+                if (!databaseTrack) {
+                    deferredUpdate.reject(new Error("Track does not exist for release"));
+                    return;
+                } 
+                // Update track paths
+                databaseTrack.waveform = track.waveform;
+                databaseTrack.snippetPath = track.snippetPath;
+                databaseTrack.mp3Path = track.mp3Path;
+                databaseTrack.save();
+
+                // Move lossless file
+                var trackFilename = path.basename(databaseTrack.path);
+                cloudstorage.move(databaseTrack.path, fileUtils.remoteReleasePath(databaseRelease.id, trackFilename), function(err) {
+                    if(err) deferredUpdate.reject(err);
+                    else deferredUpdate.resolve()
+                })
+            });
+
+            // Add update promise
+            promises.push(deferredUpdate.promise);
+
+            // Delete dropzone file
+            promises.push(
+                dbProxy.DropZoneFile.find({
+                    where: {
+                        path: databaseTrack.path
+                    }
+                }).then(function(file) {
+                    file.destroy()
+                })
+            );
+        }
+
+        Q.allSettled(promises).then(function(results) {
+            var error = false;
+            results.forEach(function (result) {
+                if (!(result.state === "fulfilled")) {
+                    error = true;
+                }
+            });
+            if (!error) {
+
+                var morePromises = []
+
+                // Remove metadata file
+                var deferredDelete = Q.defer();
+                model.DropZoneFile.find({
+                    where: {
+                        path: databaseRelease.metadataFile
+                    }
+                }).then(function(file) {
+                    file.destroy().then(function() {
+                        cloudstorage.remove(metadataFile, function(err) {
+                            if(err) deferredDelete.reject(err);
+                            else deferredDelete.resolve()
+                        })
+                    });
+                })
+
+                morePromises.push(deferredDelete)
+
+                // Move cover
+                var deferredMove = Q.defer();
+                model.DropZoneFile.find({
+                    where: {
+                        path: databaseRelease.cover
+                    }
+                }).then(function(file) {
+                    file.destroy().then(function() {
+                    // Move lossless file
+                    var oldCoverPath = databaseRelease.cover
+                    var coverFilename = path.basename(oldCoverPath);
+                    databaseRelease.cover = fileUtils.remoteReleasePath(databaseRelease.id, coverFilename)
+                    cloudstorage.move(oldCoverPath, databaseRelease.cover, function(err) {
+                            if(err) deferredMove.reject(err);
+                            else deferredMove.resolve()
+                        });
+                    });
+                });
+
+                morePromises.push(deferredMove)
+
+                Q.allSettled(morePromises).then(function(results) {
+                    databaseRelease.metadataFile = "";
+                    databaseRelease.save();
+                });
+            } else {
+                rollbackRelease(databaseRelease);
+            }
+        });
+    }
+
+    /**
+     * Callback to the release result message on rabbitmq
+     **/
+    rabbitmq.onReleaseResult(function (message, headers, deliveryInfo, messageObject) {
+
+        console.log("CALLBACK CALLED");
+        var encoded_payload = unescape(message.data)
+
+        var release;
+        
+        try {
+            release = JSON.parse(encoded_payload)
+        } catch(err) {
+            console.log("Received status message is not in JSON format");
+            return;
+        }
+
+        if (!release || !release.id) {
+            console.log("Received status message is not a release");
+            return;
+        }
+
+        console.log('Got a result message for release with id ' + release.id);
+        model.Release
+            .find({
+                where: {
+                    id: release.id
+                }
+            }).then(function(databaseRelease) {
+                if (!databaseRelease) return;
+
+                if (release.status == "PROCESSED") {
+                    commitRelease(databaseRelease);
+                } else {
+                    rollbackRelease(databaseRelease);
+                }
+            });
+    });
 
     /**
      * GET /releases/:id
