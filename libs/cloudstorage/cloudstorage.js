@@ -141,9 +141,30 @@ exports.upload = upload;
 /**
  * Removes a file from cloud storage
  */
+function move(filename, newFilename, callback) {
+    if (filename) {
+        bucket.file(filename).copy(newFilename, function(err, newFile) {
+            if (err) {
+                callback(err)
+            } else {
+                file.delete(callback);
+            } 
+        });
+    } else {
+        callback(new Error("Filename not specified"))
+    }
+}
+
+exports.remove = remove;
+
+/**
+ * Removes a file from cloud storage
+ */
 function remove(filename, callback) {
     if (filename)
         bucket.file(filename).delete(callback);
+    else 
+        callback(new Error("Filename not specified"))
 }
 
 exports.remove = remove;
