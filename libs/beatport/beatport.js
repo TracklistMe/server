@@ -9,6 +9,7 @@ var dbProxy = rootRequire('models/model');
 var cloudstorage = rootRequire('libs/cloudstorage/cloudstorage');
 var fs = require('fs');
 var xmlStream = require('xml-stream');
+var rabbitmq = rootRequire('rabbitmq/rabbitmq');
 
 
 var CORRECT = "correct"
@@ -219,7 +220,9 @@ function packRelease(xmlPath, idLabel) {
                         dbProxy.Release.create({
                             title: resultXML.release.releaseTitle[0],
                             cover: cdnCover,
-                            catalogNumber: resultXML.release.catalogNumber[0]
+                            catalogNumber: resultXML.release.catalogNumber[0],
+                            status: "PROCESSING",
+                            metadataFile: xmlPath
                                 /*
                                       
                                        ADD CLOUD LINK TO the cover image 
@@ -253,7 +256,7 @@ function packRelease(xmlPath, idLabel) {
 
                                 }))
 
-                            // remove cover from dropzone 
+                            // Temporarily disable cover in dropzone 
                             promises.push(
 
                                 dbProxy.DropZoneFile.find({
@@ -261,11 +264,12 @@ function packRelease(xmlPath, idLabel) {
                                         path: cdnCover
                                     }
                                 }).then(function(file) {
-                                    file.destroy()
+                                    file.status = "PROCESSING"
+                                    file.save()
                                 })
                             );
 
-                            // remove cover from dropzone 
+                            // Temporarilu disable xml in dropzone 
                             promises.push(
 
                                 dbProxy.DropZoneFile.find({
@@ -273,7 +277,8 @@ function packRelease(xmlPath, idLabel) {
                                         path: xmlPath
                                     }
                                 }).then(function(file) {
-                                    file.destroy()
+                                    file.status = "PROCESSING"
+                                    file.save()
                                 })
                             );
 
@@ -284,7 +289,7 @@ function packRelease(xmlPath, idLabel) {
                                         console.log("settle Request")
                                     });
 
-
+                                    rabbitmq.sendReleaseToProcess(release.dataValues);
                                     promisesQueue.resolve(results);
                                 })
 
@@ -373,7 +378,8 @@ function addTrack(trackObject, release, idLabel) {
                     path: cdnPATH
                 }
             }).on('success', function(file) {
-                file.destroy().on('success', function(u) {
+                file.status = "PROCESSING"
+                file.save().on('success', function(u) {
                     deferred.resolve(result);
                 })
             })
