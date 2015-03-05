@@ -143,7 +143,8 @@ exports.upload = upload;
  */
 function move(filename, newFilename, callback) {
     if (filename) {
-        bucket.file(filename).copy(newFilename, function(err, newFile) {
+        var file = bucket.file(filename);
+        file.copy(newFilename, function(err, newFile) {
             if (err) {
                 callback(err)
             } else {
@@ -155,7 +156,23 @@ function move(filename, newFilename, callback) {
     }
 }
 
-exports.remove = remove;
+exports.move = move;
+
+/**
+ * Copies a file from cloud storage
+ */
+function copy(filename, newFilename, callback) {
+    if (filename) {
+        bucket.file(filename).copy(newFilename, function(err, newFile) {
+            callback(err)
+        });
+    } else {
+        callback(new Error("Filename not specified"))
+    }
+}
+
+exports.copy = copy;
+
 
 /**
  * Removes a file from cloud storage
