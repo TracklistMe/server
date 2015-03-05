@@ -67,7 +67,7 @@ function remoteReleasePath(releaseId, filename) {
     return 'releases/' + releaseId + "/" + filename;
 }
 
-exports.remoteDropZonePath = remoteDropZonePath;
+exports.remoteReleasePath = remoteReleasePath;
 
 /**
  * Generator of upload functions
