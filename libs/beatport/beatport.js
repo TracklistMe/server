@@ -282,6 +282,7 @@ function packRelease(xmlPath, idLabel) {
                                 })
                             );
 
+
                             Q.allSettled(promises)
                                 .then(function(results) {
                                     console.log("GOT A RESULT")
@@ -289,8 +290,41 @@ function packRelease(xmlPath, idLabel) {
                                         console.log("settle Request")
                                     });
 
-                                    rabbitmq.sendReleaseToProcess(release.dataValues);
-                                    promisesQueue.resolve(results);
+
+
+                                    // TODO CODICE RIDONDANTE CON IL CONTROLLER DI RELEASE
+                                    // 
+                                     model.Release.find({
+                                        where: {
+                                            id: release.id
+                                        },
+                                        attributes: ['id', 'catalogNumber','status'],
+                                        order: 'position',
+                                        include: [{
+                                            model: model.Track,
+                                            include: [{
+                                                model: model.Artist,
+                                                as: 'Remixer'
+                                            }, {
+                                                model: model.Artist,
+                                                as: 'Producer'
+                                            }]
+                                        }, {
+                                            model: model.Label
+                                        }]
+
+
+                                    }).then(function(release) {
+                                        
+                                        release.json = JSON.stringify(release);
+                                        rabbitmq.sendReleaseToProcess(release);
+                                        release.save()   
+
+                                        promisesQueue.resolve(results);
+                                        
+                                    });
+
+ 
                                 })
 
 
