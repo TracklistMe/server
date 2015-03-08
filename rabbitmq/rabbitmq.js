@@ -1,18 +1,23 @@
 'use strict';
 
 var config = rootRequire('config/config');
-var amqp = require('amqp');
+//var amqp = require('amqp');
+ /*
 
 
 var connectionReady = false;
-var connection = amqp.createConnection( 
+ 
+
+ var connection = amqp.createConnection( 
 { host: config.RABBITMQ_HOST,
   port: config.RABBITMQ_PORT,
   login: config.RABBITMQ_USERNAME,
   password: config.RABBITMQ_PASSWORD,
 });
-
+ 
 connection.on('ready', function() {
+ 
+ 
   connectionReady = true;
   console.log("Connection is ready");
   if (resultQueueListener) {
@@ -27,18 +32,19 @@ connection.on('ready', function() {
       console.log("Callback not registered");
     });
   }
+  
 });
 
 connection.on('error', function(err) {
   console.log(err)
 });
-
+  */
 var resultQueueListener;
 
 
 
 function sendReleaseToProcess(release) {
-
+    /*
     while (!connectionReady) {}
 
     connection.queue(
@@ -53,12 +59,14 @@ function sendReleaseToProcess(release) {
             if (err) console.log("Send failed")
           });
       });
+
+*/
 }
 
 exports.sendReleaseToProcess = sendReleaseToProcess;
 
 function onReleaseResult(callback) {
-
+/*
     console.log("REGISTERING CALLBACK");
     resultQueueListener = callback;
 
@@ -75,7 +83,7 @@ function onReleaseResult(callback) {
         console.log("Callback not registered");
       });
     }
-  
+  */
 }
 
 exports.onReleaseResult = onReleaseResult;

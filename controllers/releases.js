@@ -158,6 +158,42 @@ module.exports.controller = function(app) {
         return deferredDelete;
     }
 
+    // update of the json linked to the releases in the db
+    function consolideJSON(releaseId){
+            var deferredMove = Q.defer();
+            // WRITE THE JSON
+            // 
+            console.log("SAVE ------- JSON") 
+                        model.Release.find({
+                            where: {
+                                id: releaseId
+                            },
+                            attributes: ['id', 'catalogNumber','status'],
+                            order: 'position',
+                            include: [{
+                                model: model.Track,
+                                include: [{
+                                    model: model.Artist,
+                                    as: 'Remixer'
+                                }, {
+                                    model: model.Artist,
+                                    as: 'Producer'
+                                }]
+                            }, {
+                                model: model.Label
+                            }]
+
+
+                        }).then(function(release) {
+                            
+                           release.json = JSON.stringify(release);
+                           deferredMove.resolve(release.json);
+                           release.save()   
+
+                            
+                        });
+             return deferredMove.promise
+    }
     function moveCoverPromise(databaseRelease) {
         var deferredMove = Q.defer();
         model.DropZoneFile.find({
@@ -336,6 +372,8 @@ module.exports.controller = function(app) {
             model.Release.create(release).
             then(function(newRelease) {
                 label.addReleases(newRelease).then(function(association) {
+                   
+                     consolideJSON(newRelease.id)
                     res.send(newRelease);
                 })
             })
@@ -428,8 +466,14 @@ module.exports.controller = function(app) {
                         results.forEach(function(result) {
                             console.log("Update Track Request Done")
                         });
-                        console.log("SENDING OUT")
+                         consolideJSON(releaseId)
+
+                    
                         res.send(results);
+                        // end of  release Fetch
+
+
+                        
                     })
             })
     });
