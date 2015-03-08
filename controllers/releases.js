@@ -160,7 +160,8 @@ module.exports.controller = function(app) {
 
     // update of the json linked to the releases in the db
     function consolideJSON(releaseId){
-            var deferredMove = Q.defer();
+               var deferredUpdate = Q.defer();
+
             // WRITE THE JSON
             // 
             console.log("SAVE ------- JSON") 
@@ -187,8 +188,11 @@ module.exports.controller = function(app) {
                         }).then(function(release) {
                             
                            release.json = JSON.stringify(release);
-                           deferredMove.resolve(release.json);
-                           release.save()   
+                            console.log("PULLED THE OBJECT")
+                           release.save().then(function(savedRelease){
+                                console.log("SAVED WITH SUCCESS")
+                                deferredMove.resolve(release.json);
+                           })   
 
                             
                         });

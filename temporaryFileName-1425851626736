@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--[ BasewareRemote v1.1.2 ]-->
+<release>
+  <aggregatorName>Sphera Group</aggregatorName>
+  <labelName>Sphera Records</labelName>
+  <UPC_EAN>5060421871196</UPC_EAN>
+  <catalogNumber>SPH151</catalogNumber>
+  <coverArtFilename>SPH151.png</coverArtFilename>
+  <releaseTitle>Right Now</releaseTitle>
+  <releaseSalesType>release</releaseSalesType>
+  <tracks>
+    <track>
+      <albumOnly>0</albumOnly>
+      <trackNumber>1</trackNumber>
+      <ISRC>ITFA61200250</ISRC>
+      <trackPublisher>Nicola Bortignon</trackPublisher>
+      <trackTitle>Right Now</trackTitle>
+      <trackMixVersion>Original Mix</trackMixVersion>
+      <originalReleaseDate>2015-03-09</originalReleaseDate>
+      <beatportExclusive>
+        <exclusivePeriod>lifetime</exclusivePeriod>
+      </beatportExclusive>
+      <trackArtists>
+        <artistName>Vlada Asanin</artistName>
+        <artistName>Alaia</artistName>
+        <artistName>Gallo</artistName>
+      </trackArtists>
+      <trackAudioFile>
+        <audioFilename>SPH151_1.wav</audioFilename>
+      </trackAudioFile>
+      <countriesAvailable>
+        <country>WW</country>
+      </countriesAvailable>
+      <trackGenre>House</trackGenre>
+      <songwriters>
+        <songwriter>
+          <name>Nicola Bortignon</name>
+          <type>author</type>
+        </songwriter>
+      </songwriters>
+    </track>
+  </tracks>
+</release>

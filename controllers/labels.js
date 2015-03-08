@@ -7,7 +7,9 @@ var authenticationUtils = rootRequire('utils/authentication-utils');
 var model = rootRequire('models/model'); 
 var cloudstorage = rootRequire('libs/cloudstorage/cloudstorage');
 var beatport = rootRequire('libs/beatport/beatport');
+var rabbitmq = rootRequire('rabbitmq/rabbitmq');
 
+ 
 module.exports.controller = function(app) {
 
     /**
@@ -646,6 +648,46 @@ module.exports.controller = function(app) {
             }).then(function(xmls) {
                 beatport.process(xmls, idLabel).then(function(results) {
                     console.log("--server response")
+                    results.forEach(function(result) {
+                        
+                        // TODO REDUNDANT SAVE JSON AND SEND RABBIT 
+                        // 
+                         model.Release.find({
+                                        where: {
+                                            id: result.value.dataValues.id
+                                        },
+                                        attributes: ['id', 'catalogNumber','status'],
+                                        order: 'position',
+                                        include: [{
+                                            model: model.Track,
+                                            include: [{
+                                                model: model.Artist,
+                                                as: 'Remixer'
+                                            }, {
+                                                model: model.Artist,
+                                                as: 'Producer'
+                                            }]
+                                        }, {
+                                            model: model.Label
+                                        }]
+
+
+                                    }).then(function(release) {
+                                        console.log("FIND")
+                                        console.log(result.value.dataValues.id)
+                                        release.json = JSON.stringify(release);
+                                        rabbitmq.sendReleaseToProcess(release);
+                                        release.save()   
+
+                                       
+                                        
+                                    });
+
+
+                      
+                    
+                    });
+                    console.log("----")
                     res.send(results);
                 })
             })

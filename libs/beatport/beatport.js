@@ -11,6 +11,7 @@ var fs = require('fs');
 var xmlStream = require('xml-stream');
 var rabbitmq = rootRequire('rabbitmq/rabbitmq');
 
+ 
 
 var CORRECT = "correct"
 var FAIL = "fail"
@@ -70,7 +71,13 @@ function process(xmlArrayList, idLabel) {
     Q.allSettled(promises)
         .then(function(results) {
             results.forEach(function(result) {
-                console.log("process Release ")
+                console.log("Release Processed --------")
+                console.log("RELEASE"+result.value.dataValues.id)
+               
+             /*   controllerRelease.consolideJSON(result.value.dataValues.id).then(function(){
+                    console.log("JSON --- SALVATO")
+                })
+*/
             });
 
             deferred.resolve(results);
@@ -282,7 +289,6 @@ function packRelease(xmlPath, idLabel) {
                                 })
                             );
 
-
                             Q.allSettled(promises)
                                 .then(function(results) {
                                     console.log("GOT A RESULT")
@@ -290,41 +296,8 @@ function packRelease(xmlPath, idLabel) {
                                         console.log("settle Request")
                                     });
 
-
-
-                                    // TODO CODICE RIDONDANTE CON IL CONTROLLER DI RELEASE
-                                    // 
-                                     model.Release.find({
-                                        where: {
-                                            id: release.id
-                                        },
-                                        attributes: ['id', 'catalogNumber','status'],
-                                        order: 'position',
-                                        include: [{
-                                            model: model.Track,
-                                            include: [{
-                                                model: model.Artist,
-                                                as: 'Remixer'
-                                            }, {
-                                                model: model.Artist,
-                                                as: 'Producer'
-                                            }]
-                                        }, {
-                                            model: model.Label
-                                        }]
-
-
-                                    }).then(function(release) {
-                                        
-                                        release.json = JSON.stringify(release);
-                                        rabbitmq.sendReleaseToProcess(release);
-                                        release.save()   
-
-                                        promisesQueue.resolve(results);
-                                        
-                                    });
-
- 
+                                    
+                                    promisesQueue.resolve(release);
                                 })
 
 

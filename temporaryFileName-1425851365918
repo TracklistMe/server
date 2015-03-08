@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--[ BasewareRemote v1.1.2 ]-->
+<release>
+  <aggregatorName>Sphera Group</aggregatorName>
+  <labelName>Sphera Records</labelName>
+  <UPC_EAN>5060421871219</UPC_EAN>
+  <catalogNumber>SPH152</catalogNumber>
+  <coverArtFilename>SPH152.png</coverArtFilename>
+  <releaseTitle>Fantasy Ep</releaseTitle>
+  <releaseSalesType>release</releaseSalesType>
+  <tracks>
+    <track>
+      <albumOnly>0</albumOnly>
+      <trackNumber>1</trackNumber>
+      <ISRC>ITFA61200251</ISRC>
+      <trackPublisher>Nicola Bortignon</trackPublisher>
+      <trackTitle>Fantasy</trackTitle>
+      <trackMixVersion>Original Mix</trackMixVersion>
+      <originalReleaseDate>2015-03-16</originalReleaseDate>
+      <beatportExclusive>
+        <exclusivePeriod>lifetime</exclusivePeriod>
+      </beatportExclusive>
+      <trackArtists>
+        <artistName>AudioReel</artistName>
+        <artistName>RIA</artistName>
+      </trackArtists>
+      <trackAudioFile>
+        <audioFilename>SPH152_1.wav</audioFilename>
+      </trackAudioFile>
+      <countriesAvailable>
+        <country>WW</country>
+      </countriesAvailable>
+      <trackGenre>Deep House</trackGenre>
+      <songwriters>
+        <songwriter>
+          <name>Nicola Bortignon</name>
+          <type>author</type>
+        </songwriter>
+      </songwriters>
+    </track>
+    <track>
+      <albumOnly>0</albumOnly>
+      <trackNumber>2</trackNumber>
+      <ISRC>ITFA61200252</ISRC>
+      <trackPublisher>Nicola Bortignon</trackPublisher>
+      <trackTitle>Inevitable</trackTitle>
+      <trackMixVersion>Original Mix</trackMixVersion>
+      <originalReleaseDate>2015-03-16</originalReleaseDate>
+      <beatportExclusive>
+        <exclusivePeriod>lifetime</exclusivePeriod>
+      </beatportExclusive>
+      <trackArtists>
+        <artistName>AudioReel</artistName>
+        <artistName>RIA</artistName>
+      </trackArtists>
+      <trackAudioFile>
+        <audioFilename>SPH152_2.wav</audioFilename>
+      </trackAudioFile>
+      <countriesAvailable>
+        <country>WW</country>
+      </countriesAvailable>
+      <trackGenre>House</trackGenre>
+      <songwriters>
+        <songwriter>
+          <name>Nicola Bortignon</name>
+          <type>author</type>
+        </songwriter>
+      </songwriters>
+    </track>
+  </tracks>
+</release>
