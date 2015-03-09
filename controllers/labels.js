@@ -408,7 +408,8 @@ module.exports.controller = function(app) {
 
             req.checkParams('labelId', 'Label id must be a number').notEmpty().isInt();
             req.checkBody('filename', 'Missing filename').notEmpty();
-            req.checkBody('extension', 'Missing extension').notEmpty().isAlpha();
+            req.checkBody('extension', 'Missing extension').notEmpty();
+            req.checkBody('extension', 'Extension not supported').isAlpha();
             req.checkBody('size', 'Filesize not present or not a number').notEmpty().isInt();
             var errors = req.validationErrors();
             if (errors) {
@@ -551,17 +552,62 @@ module.exports.controller = function(app) {
                         }).error(function(err) {
                             err.status = 500;
                             err.message = "File upload failed";
-                            console.log("File upload failed")
+                            console.log("File upload failed");
                             return next(err);
                         });
                     } else {
                         err.status = 404;
                         err.message = "File not found in label dropzone";
-                        console.log("File not found in label dropzone")
+                        console.log("File not found in label dropzone");
                         return next(err);
                     }
                 });
             });
+        });
+
+    /**
+     * DELETE /labels/:idLabel/dropZone
+     * Delete a file from the dropZone (table and CDN) for the label with id :idLabel
+     **/
+    app.delete('/labels/:labelId/dropZone',
+        authenticationUtils.ensureAuthenticated, ensureLabelManagerOrCompanyOwner,
+        function(req, res, next) {
+
+            req.checkParams('labelId', 'Label id must be a number').notEmpty().isInt();
+            req.checkBody('filename', 'Missing filename').notEmpty();
+            req.checkBody('extension', 'Missing extension').notEmpty();
+
+            var labelId = req.params.labelId;
+            var filename = req.body.filename;
+            var extension = req.body.extension;
+
+            var remotePath = fileUtils.remoteDropZonePath(labelId, filename + "." + extension);
+
+            model.DropZoneFile.find({
+                where: {
+                    path: remotePath
+                }
+            }).then(function(file) {
+                if (file) {
+                    cloudstorage.remove(remotePath, function(err) {
+                        if(err) {
+                            err.status = 404;
+                            err.message = "Failed removing file from cloudstorage";
+                            console.log("Failed removing file from cloudstorage");
+                            return next(err);
+                        } else {
+                            file.destroy();
+                            res.send();
+                        }
+                    });
+                } else {
+                    err.status = 404;
+                    err.message = "File not found in label dropzone";
+                    console.log("File not found in label dropzone");
+                    return next(err);             
+                }
+            });
+
         });
 
 
