@@ -1,8 +1,8 @@
 'use strict';
 
 var config = rootRequire('config/config');
-//var amqp = require('amqp');
- /*
+var amqp = require('amqp');
+ 
 
 
 var connectionReady = false;
@@ -38,13 +38,13 @@ connection.on('ready', function() {
 connection.on('error', function(err) {
   console.log(err)
 });
-  */
+
 var resultQueueListener;
 
 
 
 function sendReleaseToProcess(release) {
-    /*
+    
     while (!connectionReady) {}
 
     connection.queue(
@@ -60,13 +60,12 @@ function sendReleaseToProcess(release) {
           });
       });
 
-*/
 }
 
 exports.sendReleaseToProcess = sendReleaseToProcess;
 
 function onReleaseResult(callback) {
-/*
+
     console.log("REGISTERING CALLBACK");
     resultQueueListener = callback;
 
@@ -83,7 +82,6 @@ function onReleaseResult(callback) {
         console.log("Callback not registered");
       });
     }
-  */
 }
 
 exports.onReleaseResult = onReleaseResult;
