@@ -569,27 +569,23 @@ module.exports.controller = function(app) {
      * DELETE /labels/:idLabel/dropZone
      * Delete a file from the dropZone (table and CDN) for the label with id :idLabel
      **/
-    app.delete('/labels/:labelId/dropZone',
+    app.delete('/labels/:labelId/dropZone/:id',
         authenticationUtils.ensureAuthenticated, ensureLabelManagerOrCompanyOwner,
         function(req, res, next) {
 
             req.checkParams('labelId', 'Label id must be a number').notEmpty().isInt();
-            req.checkBody('filename', 'Missing filename').notEmpty();
-            req.checkBody('extension', 'Missing extension').notEmpty();
+            req.checkBody('id', 'DropZoneFile id must be a number').notEmpty().isInt();
 
             var labelId = req.params.labelId;
-            var filename = req.body.filename;
-            var extension = req.body.extension;
-
-            var remotePath = fileUtils.remoteDropZonePath(labelId, filename + "." + extension);
+            var id = req.params.labelId;
 
             model.DropZoneFile.find({
                 where: {
-                    path: remotePath
+                    path: id
                 }
             }).then(function(file) {
                 if (file) {
-                    cloudstorage.remove(remotePath, function(err) {
+                    cloudstorage.remove(file.path, function(err) {
                         if(err) {
                             err.status = 404;
                             err.message = "Failed removing file from cloudstorage";
