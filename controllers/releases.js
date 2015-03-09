@@ -52,7 +52,7 @@ module.exports.controller = function(app) {
         // Restore cover dropzone file
         model.DropZoneFile.find({
             where: {
-                path: release.cover
+                path: databaseRelease.cover
             }
         }).then(function(file) {
             if (file) {
@@ -64,7 +64,7 @@ module.exports.controller = function(app) {
         // Restore metadata file
         model.DropZoneFile.find({
             where: {
-                path: release.metadataFile
+                path: databaseRelease.metadataFile
             }
         }).then(function(file) {
             if (file) {
@@ -315,8 +315,10 @@ module.exports.controller = function(app) {
                 if (!databaseRelease) return;
 
                 if (release.status == "PROCESSED") {
+                    console.log('Release with id ' + release.id + ' has been correctly processed');
                     commitRelease(release, databaseRelease);
                 } else {
+                    console.log('Release with id ' + release.id + ' processing failed');
                     rollbackRelease(release, databaseRelease);
                 }
             });
