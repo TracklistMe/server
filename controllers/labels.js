@@ -656,7 +656,7 @@ module.exports.controller = function(app) {
                                         where: {
                                             id: result.value.dataValues.id
                                         },
-                                        attributes: ['id', 'catalogNumber','status'],
+                                        attributes: ['id','title', 'catalogNumber','status'],
                                         order: 'position',
                                         include: [{
                                             model: model.Track,
