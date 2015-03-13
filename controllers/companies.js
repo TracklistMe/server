@@ -98,6 +98,29 @@ module.exports.controller = function(app) {
 
   /*
    |--------------------------------------------------------------------------
+   | DELETE /companies/:idCompany/owners/:idUser 
+   | delete the owner idUser in the company idCompany
+   |--------------------------------------------------------------------------
+   */
+  app.delete('/companies/:companyId/owners/:userId', authenticationUtils.ensureAuthenticated, authenticationUtils.ensureAdmin, function(req, res) {
+    var ownerId = req.params.userId;
+    var companyId = req.params.companyId
+
+
+    model.Company.find({where: {id: companyId}}).then(function(company) {
+      console.log("REMOVE  USER FROM COMPANY")
+      company.getUsers({where: {id: ownerId}}).then(function(users) {
+        if (users && users.length == 1) {
+          company.removeUser(users[0]).success(function() {
+            res.send();
+          });
+        }
+      });         
+    }); 
+  }); 
+
+  /*
+   |--------------------------------------------------------------------------
    | POST /companies/:idCompany/owners/   POST {the id of owner to add}
    | return List of all the companies
    |--------------------------------------------------------------------------
