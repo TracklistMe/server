@@ -3,7 +3,7 @@
 var config = rootRequire('config/config');
 var amqp = require('amqp');
  
-
+/*
 
 var connectionReady = false;
  
@@ -42,9 +42,10 @@ connection.on('error', function(err) {
 var resultQueueListener;
 
 
+*/
 
 function sendReleaseToProcess(release) {
-    
+    /*
     while (!connectionReady) {}
 
     connection.queue(
@@ -59,13 +60,13 @@ function sendReleaseToProcess(release) {
             if (err) console.log("Send failed")
           });
       });
-
+*/
 }
 
 exports.sendReleaseToProcess = sendReleaseToProcess;
 
 function onReleaseResult(callback) {
-
+/*
     console.log("REGISTERING CALLBACK");
     resultQueueListener = callback;
 
@@ -82,6 +83,7 @@ function onReleaseResult(callback) {
         console.log("Callback not registered");
       });
     }
+    */
 }
 
 exports.onReleaseResult = onReleaseResult;
