@@ -249,7 +249,7 @@ function packRelease(xmlPath, idLabel) {
                             // PROCESS ALL THE DB 
                              
                             label.addReleases(release).then(function(associationRelease) {
-                                    var trackInsertion = []
+                                   
                                     for (var j = 0; j < resultXML.release.tracks[0].track.length; j++) {
                                         promises.push(  addTrack(resultXML.release.tracks[0].track[j], release, idLabel) );
                                     }
