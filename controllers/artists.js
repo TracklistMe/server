@@ -22,6 +22,22 @@ module.exports.controller = function(app) {
         });
     });
 
+
+    /**
+     * GET /artists/searchExact/:searchString
+     * Return the list of labels whose displayName exactly matches the search string
+     */
+    app.get('/artists/searchExact/:searchString', function(req, res, next) {
+        var searchString = req.params.searchString;
+        model.Artist.find({
+            where: {
+                displayName: searchString
+            }
+        }).then(function(artists) {
+            res.send(artists);
+        });
+    });
+
     /**
      * GET /artists/
      * Return list of all the artists
@@ -129,7 +145,7 @@ module.exports.controller = function(app) {
                 } else {
 
                     console.log("This user was already associated to this artist!")
-                        // TODO, there was an error, need to fix
+                    // TODO, there was an error, need to fix
                 }
             })
         });
