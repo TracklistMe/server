@@ -139,7 +139,7 @@ function upload(filename, filepath, callback) {
 exports.upload = upload;
 
 /**
- * Removes a file from cloud storage
+ * Moves a file to a new localtion in cloud storage
  */
 function move(filename, newFilename, callback) {
     if (filename) {
@@ -178,6 +178,8 @@ exports.copy = copy;
  * Removes a file from cloud storage
  */
 function remove(filename, callback) {
+    if (!callback) 
+        callback = function(err) {};
     if (filename)
         bucket.file(filename).delete(callback);
     else 
