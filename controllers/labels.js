@@ -4,12 +4,12 @@ var fs = require('fs-extra');
 
 var fileUtils = rootRequire('utils/file-utils');
 var authenticationUtils = rootRequire('utils/authentication-utils');
-var model = rootRequire('models/model'); 
+var model = rootRequire('models/model');
 var cloudstorage = rootRequire('libs/cloudstorage/cloudstorage');
 var beatport = rootRequire('libs/beatport/beatport');
 var rabbitmq = rootRequire('rabbitmq/rabbitmq');
 
- 
+
 module.exports.controller = function(app) {
 
     /**
@@ -546,7 +546,7 @@ module.exports.controller = function(app) {
 
                         var file = files[0];
                         file.status = "UPLOADED"
-                            // TODO get metadata and fill other fields?
+                        // TODO get metadata and fill other fields?
                         file.save().success(function() {
                             res.send();
                         }).error(function(err) {
@@ -586,7 +586,7 @@ module.exports.controller = function(app) {
             }).then(function(file) {
                 if (file) {
                     cloudstorage.remove(file.path, function(err) {
-                        if(err) {
+                        if (err) {
                             err.status = 404;
                             err.message = "Failed removing file from cloudstorage";
                             console.log("Failed removing file from cloudstorage");
@@ -600,7 +600,7 @@ module.exports.controller = function(app) {
                     err.status = 404;
                     err.message = "File not found in label dropzone";
                     console.log("File not found in label dropzone");
-                    return next(err);             
+                    return next(err);
                 }
             });
 
@@ -691,43 +691,43 @@ module.exports.controller = function(app) {
                 beatport.process(xmls, idLabel).then(function(results) {
                     console.log("--server response")
                     results.forEach(function(result) {
-                        
+
                         // TODO REDUNDANT SAVE JSON AND SEND RABBIT 
                         // 
-                         model.Release.find({
-                                        where: {
-                                            id: result.value.dataValues.id
-                                        },
-                                        attributes: ['id','title', 'catalogNumber','status'],
-                                        order: 'position',
-                                        include: [{
-                                            model: model.Track,
-                                            include: [{
-                                                model: model.Artist,
-                                                as: 'Remixer'
-                                            }, {
-                                                model: model.Artist,
-                                                as: 'Producer'
-                                            }]
-                                        }, {
-                                            model: model.Label
-                                        }]
+                        model.Release.find({
+                            where: {
+                                id: result.value.dataValues.id
+                            },
+                            attributes: ['id', 'title', 'catalogNumber', 'status'],
+                            order: 'position',
+                            include: [{
+                                model: model.Track,
+                                include: [{
+                                    model: model.Artist,
+                                    as: 'Remixer'
+                                }, {
+                                    model: model.Artist,
+                                    as: 'Producer'
+                                }]
+                            }, {
+                                model: model.Label
+                            }]
 
 
-                                    }).then(function(release) {
-                                        console.log("FIND")
-                                        console.log(result.value.dataValues.id)
-                                        release.json = JSON.stringify(release);
-                                        rabbitmq.sendReleaseToProcess(release);
-                                        release.save()   
-
-                                       
-                                        
-                                    });
+                        }).then(function(release) {
+                            console.log("FIND")
+                            console.log(result.value.dataValues.id)
+                            release.json = JSON.stringify(release);
+                            rabbitmq.sendReleaseToProcess(release);
+                            release.save()
 
 
-                      
-                    
+
+                        });
+
+
+
+
                     });
                     console.log("----")
                     res.send(results);
@@ -806,7 +806,7 @@ module.exports.controller = function(app) {
     app.delete('/labels/:labelId/labelManagers/:userId', authenticationUtils.ensureAuthenticated, ensureCompanyOwnerFromLabel, function(req, res, next) {
 
         req.checkParams('labelId', 'Label id must be a number').notEmpty().isInt();
-        req.checkBody('userId', 'User id is empty or not a number').notEmpty().isInt();
+        req.checkParams('userId', 'User id is empty or not a number').notEmpty().isInt();
         var errors = req.validationErrors();
         if (errors) {
             var err = new Error();
