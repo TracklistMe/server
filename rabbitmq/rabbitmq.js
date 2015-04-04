@@ -4,7 +4,6 @@ var config = rootRequire('config/config');
 var amqp = require('amqp');
 
 
-
 var connectionReady = false;
 
 
@@ -64,7 +63,6 @@ function sendReleaseToProcess(release) {
                     if (err) console.log("Send failed")
                 });
         });
-
 }
 
 exports.sendReleaseToProcess = sendReleaseToProcess;
@@ -89,7 +87,6 @@ function onReleaseResult(callback) {
                 console.log("Callback not registered");
             });
     }
-
 }
 
 exports.onReleaseResult = onReleaseResult;

@@ -224,6 +224,41 @@ app.get('/images/*', function(req, res, next) {
 });
 
 
+/**
+ * SNIPPETS
+ **/
+app.get('/snippets/*', function(req, res, next) {
+
+    console.log(req.originalUrl)
+
+    var mimeTypes = {
+        "mp3": "audio/mpeg",
+        "ogg": "audio/ogg"
+    };
+
+
+
+    var image = req.originalUrl.substring(10, req.originalUrl.length);
+
+    cloudstorage.createSignedUrl(image, "GET", 20, function(err, url) {
+        if (err) {
+            //throw err;
+            err.status = 404;
+            err.message = "Image not found";
+            return next(err);
+        }
+        console.log("ERR: ");
+        console.log(err)
+        console.log("URL")
+        console.log(url)
+
+        res.redirect(url);
+    }); /* Cloud storage signed url callback*/
+});
+
+
+
+
 users.controller(app);
 companies.controller(app);
 artists.controller(app);

@@ -19,16 +19,16 @@ module.exports.controller = function(app) {
     function rollbackRelease(release, databaseRelease) {
 
         databaseRelease.status = "PROCESSING_FAILED";
-        
-        for (var i =0; i < release.Tracks.length; i++) { 
-            var track = release.Tracks[i];   
-            
+
+        for (var i = 0; i < release.Tracks.length; i++) {
+            var track = release.Tracks[i];
+
             // Restore track dropzone files
             model.Track.find({
                 where: {
                     id: track.id
                 }
-            }).then(function(databaseTrack){
+            }).then(function(databaseTrack) {
                 if (databaseTrack) {
                     databaseTrack.path = track.path;
                     databaseTrack.mp3Path = null;
@@ -83,12 +83,12 @@ module.exports.controller = function(app) {
             where: {
                 id: track.id
             }
-        }).then(function(databaseTrack){
+        }).then(function(databaseTrack) {
             if (!databaseTrack) {
                 console.log("Track does not exist, update promise rejected")
                 deferredUpdate.reject(new Error("Track does not exist for release"));
             } else {
-            // Update track paths
+                // Update track paths
                 databaseTrack.waveform = track.waveform;
                 databaseTrack.snippetPath = track.snippetPath;
                 databaseTrack.mp3Path = track.mp3Path;
@@ -97,7 +97,7 @@ module.exports.controller = function(app) {
                 var trackFilename = path.basename(databaseTrack.path);
                 var newLosslessPath = fileUtils.remoteReleasePath(releaseId, trackFilename);
                 cloudstorage.copy(databaseTrack.path, newLosslessPath, function(err) {
-                    if(err) deferredUpdate.reject(err);
+                    if (err) deferredUpdate.reject(err);
                     else {
                         databaseTrack.path = newLosslessPath;
                         databaseTrack.save();
@@ -108,7 +108,7 @@ module.exports.controller = function(app) {
         });
 
         // return update promise
-        return deferredUpdate.promise;        
+        return deferredUpdate.promise;
     }
 
     function deleteDropZoneFileTableEntryPromise(dropZonePath) {
@@ -130,7 +130,7 @@ module.exports.controller = function(app) {
         });
 
         // Return delete promise
-        return deferredDelete.promise;     
+        return deferredDelete.promise;
     }
 
     function deleteDropZoneFilePromise(dropZonePath) {
@@ -144,13 +144,13 @@ module.exports.controller = function(app) {
             if (file) {
                 file.destroy().then(function() {
                     cloudstorage.remove(dropZonePath, function(err) {
-                        if(err) deferredDelete.reject(err);
+                        if (err) deferredDelete.reject(err);
                         else deferredDelete.resolve();
                     });
                 });
             } else {
                 console.log("DropZoneFile does not exist, delete promise rejected")
-                deferredDelete.reject(new Error("DropZoneFile does not exist"))                
+                deferredDelete.reject(new Error("DropZoneFile does not exist"))
             }
         });
 
@@ -159,45 +159,46 @@ module.exports.controller = function(app) {
     }
 
     // update of the json linked to the releases in the db
-    function consolideJSON(releaseId){
-               var deferredUpdate = Q.defer();
+    function consolideJSON(releaseId) {
+        var deferredUpdate = Q.defer();
 
-            // WRITE THE JSON
-            // 
-            console.log("SAVE ------- JSON") 
-                        model.Release.find({
-                            where: {
-                                id: releaseId
-                            },
-                            attributes: ['id', 'catalogNumber','status'],
-                            order: 'position',
-                            include: [{
-                                model: model.Track,
-                                include: [{
-                                    model: model.Artist,
-                                    as: 'Remixer'
-                                }, {
-                                    model: model.Artist,
-                                    as: 'Producer'
-                                }]
-                            }, {
-                                model: model.Label
-                            }]
+        // WRITE THE JSON
+        // 
+        console.log("SAVE ------- JSON")
+        model.Release.find({
+            where: {
+                id: releaseId
+            },
+            attributes: ['id', 'catalogNumber', 'status'],
+            order: 'position',
+            include: [{
+                model: model.Track,
+                include: [{
+                    model: model.Artist,
+                    as: 'Remixer'
+                }, {
+                    model: model.Artist,
+                    as: 'Producer'
+                }]
+            }, {
+                model: model.Label
+            }]
 
 
-                        }).then(function(release) {
-                            
-                           release.json = JSON.stringify(release);
-                            console.log("PULLED THE OBJECT")
-                           release.save().then(function(savedRelease){
-                                console.log("SAVED WITH SUCCESS")
-                                deferredMove.resolve(release.json);
-                           })   
+        }).then(function(release) {
 
-                            
-                        });
-             return deferredMove.promise
+            release.json = JSON.stringify(release);
+            console.log("PULLED THE OBJECT")
+            release.save().then(function(savedRelease) {
+                console.log("SAVED WITH SUCCESS")
+                deferredMove.resolve(release.json);
+            })
+
+
+        });
+        return deferredMove.promise
     }
+
     function moveCoverPromise(databaseRelease) {
         var deferredMove = Q.defer();
         model.DropZoneFile.find({
@@ -212,13 +213,13 @@ module.exports.controller = function(app) {
                     var coverFilename = path.basename(oldCoverPath);
                     databaseRelease.cover = fileUtils.remoteReleasePath(databaseRelease.id, coverFilename)
                     cloudstorage.move(oldCoverPath, databaseRelease.cover, function(err) {
-                        if(err) deferredMove.reject(err);
+                        if (err) deferredMove.reject(err);
                         else deferredMove.resolve();
                     });
                 });
             } else {
                 console.log("DropZoneFile does not exist, delete promise rejected");
-                deferredMove.reject(new Error("DropZoneFile does not exist"));                
+                deferredMove.reject(new Error("DropZoneFile does not exist"));
             }
         });
 
@@ -236,10 +237,10 @@ module.exports.controller = function(app) {
         databaseRelease.status = "PROCESSED";
 
         var updateTrackPromises = [];
-        
-        for (var i =0; i < release.Tracks.length; i++) { 
-            var track = release.Tracks[i];   
-            
+
+        for (var i = 0; i < release.Tracks.length; i++) {
+            var track = release.Tracks[i];
+
             // Update track
             updateTrackPromises.push(updateTrackPromise(track, release.id));
 
@@ -247,8 +248,8 @@ module.exports.controller = function(app) {
 
         Q.allSettled(updateTrackPromises).then(function(results) {
 
-            var error =false
-            for (i = 0; i < results.length; i++) { 
+            var error = false
+            for (i = 0; i < results.length; i++) {
                 if (results[i].state === "rejected") {
                     error = true;
                     break;
@@ -259,11 +260,11 @@ module.exports.controller = function(app) {
                 console.log("All tracks have been updated and files moved");
 
                 var deleteDropZoneFilePromises = [];
-                for (var i =0; i < release.Tracks.length; i++) { 
-                    var track = release.Tracks[i];   
+                for (var i = 0; i < release.Tracks.length; i++) {
+                    var track = release.Tracks[i];
                     // Delete dropzone file table entry
                     deleteDropZoneFilePromises.push(deleteDropZoneFilePromise(track.path));
-                } 
+                }
 
                 Q.allSettled(deleteDropZoneFilePromises).then(function(results) {
 
@@ -283,7 +284,7 @@ module.exports.controller = function(app) {
             } else {
                 console.log("Track update failed");
                 rollbackRelease(release, databaseRelease);
-                return;                
+                return;
             }
         })
     }
@@ -291,7 +292,7 @@ module.exports.controller = function(app) {
     /**
      * Callback to the release result message on rabbitmq
      **/
-    rabbitmq.onReleaseResult(function (message, headers, deliveryInfo, messageObject) {
+    rabbitmq.onReleaseResult(function(message, headers, deliveryInfo, messageObject) {
 
         if (deliveryInfo.contentType != "application/json") {
             console.log("Received status message is not in JSON format");
@@ -323,6 +324,33 @@ module.exports.controller = function(app) {
                 }
             });
     });
+
+
+    app.get('/releases/', function(req, res) {
+
+
+        model.Release.findAll({
+            where: {
+                isActive: 1
+            },
+            order: 'position',
+            include: [{
+                model: model.Track,
+                include: [{
+                    model: model.Artist,
+                    as: 'Remixer'
+                }, {
+                    model: model.Artist,
+                    as: 'Producer'
+                }]
+            }, {
+                model: model.Label
+            }]
+        }).then(function(releases) {
+            res.send(releases);
+        });
+    });
+
 
     /**
      * GET /releases/:id
@@ -378,8 +406,8 @@ module.exports.controller = function(app) {
             model.Release.create(release).
             then(function(newRelease) {
                 label.addReleases(newRelease).then(function(association) {
-                   
-                     consolideJSON(newRelease.id)
+
+                    consolideJSON(newRelease.id)
                     res.send(newRelease);
                 })
             })
@@ -410,61 +438,61 @@ module.exports.controller = function(app) {
                 var trackUpdatePromises = [];
                 for (var i = release.Tracks.length - 1; i >= 0; i--) {
                     trackUpdatePromises.push(
-                            model.Track.find({
-                                where: {
-                                    id: release.Tracks[i].id
+                        model.Track.find({
+                            where: {
+                                id: release.Tracks[i].id
+                            }
+                        }).then(function(track) {
+
+                            // UPDATE TRACK INFO:
+                            var deferred = Q.defer();
+
+                            var jsonTrack;
+                            for (var i = release.Tracks.length - 1; i >= 0; i--) {
+                                if (release.Tracks[i].id == track.id) {
+                                    jsonTrack = release.Tracks[i];
                                 }
-                            }).then(function(track) {
+                            }
 
-                                // UPDATE TRACK INFO:
-                                var deferred = Q.defer();
-
-                                var jsonTrack;
-                                for (var i = release.Tracks.length - 1; i >= 0; i--) {
-                                    if (release.Tracks[i].id == track.id) {
-                                        jsonTrack = release.Tracks[i];
-                                    }
-                                }
-
-                                newRelease.addTrack(track, {
-                                    position: jsonTrack.ReleaseTracks.position
-                                })
+                            newRelease.addTrack(track, {
+                                position: jsonTrack.ReleaseTracks.position
+                            })
 
 
-                                track.updateAttributes(jsonTrack).then(function(newTrack) {
-                                        // SET THE ARTISTS
+                            track.updateAttributes(jsonTrack).then(function(newTrack) {
+                                // SET THE ARTISTS
 
-                                        // list of promixes tu track 
+                                // list of promixes tu track 
 
-                                        // 
-                                        // 
-                                        var newProducers = [];
-                                        for (var i = jsonTrack.Producer.length - 1; i >= 0; i--) {
-                                            newProducers.push(jsonTrack.Producer[i].id);
-                                        };
+                                // 
+                                // 
+                                var newProducers = [];
+                                for (var i = jsonTrack.Producer.length - 1; i >= 0; i--) {
+                                    newProducers.push(jsonTrack.Producer[i].id);
+                                };
 
-                                        var newRemixers = [];
-                                        for (var i = jsonTrack.Remixer.length - 1; i >= 0; i--) {
-                                            newRemixers.push(jsonTrack.Remixer[i].id);
-                                        };
+                                var newRemixers = [];
+                                for (var i = jsonTrack.Remixer.length - 1; i >= 0; i--) {
+                                    newRemixers.push(jsonTrack.Remixer[i].id);
+                                };
 
 
 
-                                        // Q.all  accept an array of promises functions. Call the done when all are successful
-                                        Q.all([
+                                // Q.all  accept an array of promises functions. Call the done when all are successful
+                                Q.all([
 
-                                            track.setRemixer(newRemixers),
-                                            track.setProducer(newProducers)
-                                        ]).done(function() {
-                                            deferred.resolve();
-                                        });
+                                    track.setRemixer(newRemixers),
+                                    track.setProducer(newProducers)
+                                ]).done(function() {
+                                    deferred.resolve();
+                                });
 
-                                        //res.send();
-                                    })
-                                    // I NEED TO RETURN HERE A PROMIXE 
-                                return deferred.promise;
+                                //res.send();
+                            })
+                            // I NEED TO RETURN HERE A PROMIXE 
+                            return deferred.promise;
 
-                            })) // push into trackUpdate Promises 
+                        })) // push into trackUpdate Promises 
                 };
 
                 Q.allSettled(trackUpdatePromises)
@@ -472,14 +500,14 @@ module.exports.controller = function(app) {
                         results.forEach(function(result) {
                             console.log("Update Track Request Done")
                         });
-                         consolideJSON(releaseId)
+                        consolideJSON(releaseId)
 
-                    
+
                         res.send(results);
                         // end of  release Fetch
 
 
-                        
+
                     })
             })
     });
