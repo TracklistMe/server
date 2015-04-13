@@ -22,7 +22,6 @@ var async = require('async');
 var bodyParser = require('body-parser');
 var express = require('express');
 var logger = require('morgan');
-var mongoose = require('mongoose');
 var request = require('request');
 var multipart = require('connect-multiparty');
 var expressValidator = require('express-validator')
