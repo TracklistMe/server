@@ -466,6 +466,7 @@ module.exports.controller = function(app) {
                                             policy: policy.policy,
                                             signature: policy.signature
                                         });
+                                    } else {
                                         var err = new Error();
                                         err.status = 500;
                                         err.message = "Failed assigning file to label";
