@@ -38,6 +38,7 @@ var users = rootRequire('controllers/users.js');
 var companies = rootRequire('controllers/companies.js');
 var artists = rootRequire('controllers/artists.js');
 var labels = rootRequire('controllers/labels.js');
+var tracks = rootRequire('controllers/tracks.js');
 var releases = rootRequire('controllers/releases.js');
 var authenticators = rootRequire('controllers/authenticators.js');
 var stripePayment = rootRequire('controllers/stripePayment.js');
@@ -237,9 +238,38 @@ app.get('/snippets/*', function(req, res, next) {
 
 
 
-    var image = req.originalUrl.substring(10, req.originalUrl.length);
+    var snippet = req.originalUrl.substring(10, req.originalUrl.length);
 
-    cloudstorage.createSignedUrl(image, "GET", 20, function(err, url) {
+    cloudstorage.createSignedUrl(snippet, "GET", 20, function(err, url) {
+        if (err) {
+            //throw err;
+            err.status = 404;
+            err.message = "Image not found";
+            return next(err);
+        }
+        console.log("ERR: ");
+        console.log(err)
+        console.log("URL")
+        console.log(url)
+
+        res.redirect(url);
+    }); /* Cloud storage signed url callback*/
+});
+
+
+app.get('/waveforms/*', function(req, res, next) {
+
+    console.log(req.originalUrl)
+
+    var mimeTypes = {
+        "json": "application/javascript"
+    };
+
+    var json = req.originalUrl.substring(11, req.originalUrl.length);
+    console.log("TRY TO FETCH ");
+    console.log(json)
+    console.log("-----")
+    cloudstorage.createSignedUrl(json, "GET", 20, function(err, url) {
         if (err) {
             //throw err;
             err.status = 404;
@@ -257,11 +287,12 @@ app.get('/snippets/*', function(req, res, next) {
 
 
 
-
+//D.I.
 users.controller(app);
 companies.controller(app);
 artists.controller(app);
 labels.controller(app);
+tracks.controller(app);
 releases.controller(app);
 authenticators.controller(app);
 stripePayment.controller(app);
