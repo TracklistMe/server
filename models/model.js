@@ -153,7 +153,7 @@ var Artist = sequelizeObject.define('Artist', {
 exports.Artist = Artist;
 
 /* 
-  Artist
+  Release
 */
 
 var Release = sequelizeObject.define('Release', {
@@ -182,6 +182,19 @@ var Release = sequelizeObject.define('Release', {
 
 exports.Release = Release;
 
+/* Genre */
+
+var Genre = sequelizeObject.define('Genre', {
+    id: {
+        type: Sequelize.INTEGER,
+        autoIncrement: true,
+        primaryKey: true
+    },
+    name: Sequelize.STRING
+});
+exports.Genre = Genre;
+
+/* Tracks */
 
 var Track = sequelizeObject.define('Track', {
     id: {
@@ -193,9 +206,9 @@ var Track = sequelizeObject.define('Track', {
     version: Sequelize.STRING,
     cover: Sequelize.STRING,
     path: Sequelize.STRING,
-    mp3Path : Sequelize.STRING,
-    snippetPath : Sequelize.STRING,
-    waveform : Sequelize.TEXT
+    mp3Path: Sequelize.STRING,
+    snippetPath: Sequelize.STRING,
+    waveform: Sequelize.TEXT
 });
 exports.Track = Track;
 
@@ -205,25 +218,24 @@ exports.Track = Track;
 */
 
 // User <--> Company
-User.hasMany(Company)
-Company.hasMany(User)
-    // Label <--> Company
-Company.hasMany(Label)
-Label.hasMany(Company)
-    // User <--> Labels
-User.hasMany(Label)
-Label.hasMany(User)
+User.belongsToMany(Company)
+
+// Label <--> Company
+Company.belongsToMany(Label)
+
+// User <--> Labels
+User.belongsToMany(Label)
+
 
 // Label <--> DropZoneFile
 
-DropZoneFile.hasMany(Label)
-Label.hasMany(DropZoneFile)
+DropZoneFile.belongsToMany(Label)
+
 
 
 // Label <--> Releases
-Release.hasMany(Label)
-Label.hasMany(Release)
-    // Release <--> Tracks 
+Release.belongsToMany(Label)
+// Release <--> Tracks 
 ReleaseTracks = sequelizeObject.define('ReleaseTracks', {
     position: Sequelize.INTEGER
 })
@@ -256,8 +268,11 @@ Track.hasMany(Artist, {
 })
 
 //Artist ownership by users
-Artist.hasMany(User)
-User.hasMany(Artist)
 
+User.belongsToMany(Artist)
+
+
+// GENRE and track relationship
+Track.belongsToMany(Genre)
 
 //sequelizeObject.sync();

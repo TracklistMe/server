@@ -40,6 +40,7 @@ var artists = rootRequire('controllers/artists.js');
 var labels = rootRequire('controllers/labels.js');
 var tracks = rootRequire('controllers/tracks.js');
 var releases = rootRequire('controllers/releases.js');
+var genres = rootRequire('controllers/genres.js');
 var authenticators = rootRequire('controllers/authenticators.js');
 var stripePayment = rootRequire('controllers/stripePayment.js');
 /*
@@ -257,7 +258,7 @@ app.get('/snippets/*', function(req, res, next) {
 });
 
 
-app.get('/waveforms/*', function(req, res, next) {
+app.get('/waveforms/*', function(req, res) {
 
     console.log(req.originalUrl)
 
@@ -294,6 +295,7 @@ artists.controller(app);
 labels.controller(app);
 tracks.controller(app);
 releases.controller(app);
+genres.controller(app);
 authenticators.controller(app);
 stripePayment.controller(app);
 
