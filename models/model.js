@@ -224,17 +224,19 @@ User.belongsToMany(Company)
 Company.belongsToMany(Label)
 
 // User <--> Labels
-User.belongsToMany(Label)
+User.hasMany(Label)
+Label.hasMany(User)
 
 
 // Label <--> DropZoneFile
 
 DropZoneFile.belongsToMany(Label)
-
+Label.belongsToMany(DropZoneFile)
 
 
 // Label <--> Releases
 Release.belongsToMany(Label)
+Label.belongsToMany(Release)
 // Release <--> Tracks 
 ReleaseTracks = sequelizeObject.define('ReleaseTracks', {
     position: Sequelize.INTEGER
@@ -274,5 +276,6 @@ User.belongsToMany(Artist)
 
 // GENRE and track relationship
 Track.belongsToMany(Genre)
+Genre.belongsToMany(Track)
 
 //sequelizeObject.sync();
