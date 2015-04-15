@@ -373,6 +373,8 @@ module.exports.controller = function(app) {
                 }, {
                     model: model.Artist,
                     as: 'Producer'
+                }, {
+                    model: model.Genre
                 }]
             }, {
                 model: model.Label
