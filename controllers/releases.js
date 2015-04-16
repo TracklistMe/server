@@ -34,6 +34,7 @@ module.exports.controller = function(app) {
                     databaseTrack.mp3Path = null;
                     databaseTrack.snippetPath = null;
                     databaseTrack.waveform = null;
+                    databaseTrack.lengthInSeconds = null;
                     model.DropZoneFile.find({
                         where: {
                             path: databaseTrack.path
@@ -92,6 +93,7 @@ module.exports.controller = function(app) {
                 databaseTrack.waveform = track.waveform;
                 databaseTrack.snippetPath = track.snippetPath;
                 databaseTrack.mp3Path = track.mp3Path;
+                databaseTrack.lengthInSeconds = track.lengthInSeconds;
 
                 // Move lossless file
                 var trackFilename = path.basename(databaseTrack.path);
