@@ -242,6 +242,41 @@ module.exports.controller = function(app) {
             }
         });
     });
+    /**
+     * GET /labels/:id/companies
+     * Return all the companies the label with id = :id belongs to.
+     */
+    app.get('/labels/:labelId/companies', authenticationUtils.ensureAuthenticated, function(req, res, next) {
+        req.checkParams('labelId', 'Invalid search string').notEmpty().isInt();
+        var errors = req.validationErrors();
+        if (errors) {
+            var err = new Error();
+            err.status = 400;
+            err.message = 'There have been validation errors';
+            err.validation = errors;
+            return next(err);
+        }
+        var LabelId = req.params.labelId;
+        model.Label.find({
+            where: {
+                id: LabelId
+            }
+        }).then(function(label) {
+            if (label) {
+                label.getCompanies({
+                    attributes: ['displayName', 'id']
+                }).success(function(associatedCompany) {
+
+                    res.send(associatedCompany);
+                })
+            } else {
+                var err = new Error();
+                err.status = 404;
+                err.message = "Requested label does not exist";
+                return next(err);
+            }
+        });
+    });
 
     /**
      * POST /labels/

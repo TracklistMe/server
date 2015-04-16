@@ -384,7 +384,6 @@ module.exports.controller = function(app) {
 
 
         }).then(function(release) {
-            console.log(release.dataValues)
 
 
             res.send(release);
