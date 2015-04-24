@@ -19,9 +19,8 @@ module.exports.controller = function(app) {
     function rollbackRelease(release, databaseRelease) {
 
         databaseRelease.status = "PROCESSING_FAILED";
-
-        for (var i = 0; i < release.Tracks.length; i++) {
-            var track = release.Tracks[i];
+	
+        release.Tracks.forEach(function(track) {
 
             // Restore track dropzone files
             model.Track.find({
@@ -38,18 +37,19 @@ module.exports.controller = function(app) {
                     databaseTrack.lengthInSeconds = null;
                     model.DropZoneFile.find({
                         where: {
-                            path: databaseTrack.path
+                            path: track.path
                         }
                     }).then(function(file) {
                         if (file) {
                             file.status = "UPLOADED";
                             file.save();
+			    console.log("Saving track " + databaseTrack.id + " Path " + track.path);
                             databaseTrack.save();
                         }
                     });
                 }
             });
-        }
+        });
 
         // Restore cover dropzone file
         model.DropZoneFile.find({
