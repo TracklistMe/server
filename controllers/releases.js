@@ -33,6 +33,7 @@ module.exports.controller = function(app) {
                     databaseTrack.path = track.path;
                     databaseTrack.mp3Path = null;
                     databaseTrack.snippetPath = null;
+                    databaseTrack.oggSnippetPath = null;
                     databaseTrack.waveform = null;
                     databaseTrack.lengthInSeconds = null;
                     model.DropZoneFile.find({
@@ -92,6 +93,7 @@ module.exports.controller = function(app) {
                 // Update track paths
                 databaseTrack.waveform = track.waveform;
                 databaseTrack.snippetPath = track.snippetPath;
+                databaseTrack.oggSnippetPath = track.oggSnippetPath;
                 databaseTrack.mp3Path = track.mp3Path;
                 databaseTrack.lengthInSeconds = track.lengthInSeconds;
 
