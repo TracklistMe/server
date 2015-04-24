@@ -208,6 +208,7 @@ var Track = sequelizeObject.define('Track', {
     path: Sequelize.STRING,
     mp3Path: Sequelize.STRING,
     snippetPath: Sequelize.STRING,
+    oggSnippetPath: Sequelize.STRING,
     waveform: Sequelize.TEXT,
     lengthInSeconds: Sequelize.INTEGER
 });
