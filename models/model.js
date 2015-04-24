@@ -221,10 +221,10 @@ exports.Track = Track;
 
 // User <--> Company
 User.belongsToMany(Company)
-
+Company.belongsToMany(User)
 // Label <--> Company
 Company.belongsToMany(Label)
-
+Label.belongsToMany(Company)
 // User <--> Labels
 User.hasMany(Label)
 Label.hasMany(User)

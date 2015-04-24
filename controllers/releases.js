@@ -193,12 +193,12 @@ module.exports.controller = function(app) {
             console.log("PULLED THE OBJECT")
             release.save().then(function(savedRelease) {
                 console.log("SAVED WITH SUCCESS")
-                deferredMove.resolve(release.json);
+                deferredUpdate.resolve(release.json);
             })
 
 
         });
-        return deferredMove.promise
+        return deferredUpdate.promise
     }
 
     function moveCoverPromise(databaseRelease) {
@@ -384,7 +384,6 @@ module.exports.controller = function(app) {
 
 
         }).then(function(release) {
-            console.log(release.dataValues)
 
 
             res.send(release);
