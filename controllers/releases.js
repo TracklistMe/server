@@ -439,65 +439,104 @@ module.exports.controller = function(app) {
                     id: releaseId
                 }
             }).then(function(newRelease) {
+                // newRelease is the current release 
                 newRelease.updateAttributes(release);
                 var trackUpdatePromises = [];
                 for (var i = release.Tracks.length - 1; i >= 0; i--) {
-                    trackUpdatePromises.push(
-                        model.Track.find({
-                            where: {
-                                id: release.Tracks[i].id
-                            }
-                        }).then(function(track) {
+                    var addOrUpdateTrack = function(i) {
 
-                            // UPDATE TRACK INFO:
-                            var deferred = Q.defer();
+                        var currentTrack = release.Tracks[i];
 
-                            var jsonTrack;
-                            for (var i = release.Tracks.length - 1; i >= 0; i--) {
-                                if (release.Tracks[i].id == track.id) {
-                                    jsonTrack = release.Tracks[i];
+                        trackUpdatePromises.push(
+
+                            // SEARCH THE TRACK
+                            model.Track.find({
+                                where: {
+                                    id: release.Tracks[i].id
                                 }
-                            }
-
-                            newRelease.addTrack(track, {
-                                position: jsonTrack.ReleaseTracks.position
-                            })
-
-
-                            track.updateAttributes(jsonTrack).then(function(newTrack) {
-                                // SET THE ARTISTS
-
-                                // list of promixes tu track 
-
-                                // 
-                                // 
-                                var newProducers = [];
-                                for (var i = jsonTrack.Producer.length - 1; i >= 0; i--) {
-                                    newProducers.push(jsonTrack.Producer[i].id);
-                                };
-
-                                var newRemixers = [];
-                                for (var i = jsonTrack.Remixer.length - 1; i >= 0; i--) {
-                                    newRemixers.push(jsonTrack.Remixer[i].id);
-                                };
+                            }).then(function(track) {
+                                console.log("_____________")
+                                console.log("_____________")
+                                console.log("_____________")
+                                console.log("_____________")
+                                console.log(currentTrack)
+                                console.log("_____________")
+                                console.log("_____________")
+                                var deferred = Q.defer();
+                                if (track) {
+                                    // IF THE TRACK EXISTS 
+                                    // UPDATE TRACK INFO:
 
 
 
-                                // Q.all  accept an array of promises functions. Call the done when all are successful
-                                Q.all([
 
-                                    track.setRemixer(newRemixers),
-                                    track.setProducer(newProducers)
-                                ]).done(function() {
-                                    deferred.resolve();
-                                });
+                                    newRelease.addTrack(track, {
+                                        position: currentTrack.ReleaseTracks.position
+                                    })
 
-                                //res.send();
-                            })
-                            // I NEED TO RETURN HERE A PROMIXE 
-                            return deferred.promise;
 
-                        })) // push into trackUpdate Promises 
+                                    track.updateAttributes(currentTrack).then(function(newTrack) {
+                                        // SET THE ARTISTS
+
+                                        // list of promixes tu track 
+
+                                        // 
+                                        // 
+                                        var newProducers = [];
+                                        for (var i = currentTrack.Producer.length - 1; i >= 0; i--) {
+                                            newProducers.push(currentTrack.Producer[i].id);
+                                        };
+
+                                        var newRemixers = [];
+                                        for (var i = currentTrack.Remixer.length - 1; i >= 0; i--) {
+                                            newRemixers.push(currentTrack.Remixer[i].id);
+                                        };
+
+                                        var newGenres = []
+                                        for (var i = currentTrack.Genres.length - 1; i >= 0; i--) {
+                                            newGenres.push(currentTrack.Genres[i]);
+                                        };
+
+
+                                        // Q.all  accept an array of promises functions. Call the done when all are successful
+                                        Q.all([
+                                            //  track.setGenres(newGenres),
+                                            track.setRemixer(newRemixers),
+                                            track.setProducer(newProducers)
+                                        ]).done(function() {
+                                            deferred.resolve();
+                                        });
+
+                                        //res.send();
+                                    })
+
+
+                                } else {
+
+                                    console.log("CREO LA TRACCIA")
+                                    model.Track.create({
+                                        title: currentTrack.title,
+                                        version: currentTrack.version,
+                                        path: currentTrack.path
+                                    }).then(function(track) {
+                                        newRelease.addTrack(track, {
+                                            position: currentTrack.ReleaseTracks.position
+                                        })
+                                        deferred.resolve();
+                                    });
+
+
+
+
+                                }
+
+
+                                // I NEED TO RETURN HERE A promise 
+                                return deferred.promise;
+
+                            })) // push into trackUpdate Promises 
+                    };
+                    addOrUpdateTrack(i) //pass the id inside the scope of the function
                 };
 
                 Q.allSettled(trackUpdatePromises)
