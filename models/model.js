@@ -274,6 +274,7 @@ Track.hasMany(Artist, {
 //Artist ownership by users
 
 User.belongsToMany(Artist)
+Artist.belongsToMany(User)
 
 
 // GENRE and track relationship
