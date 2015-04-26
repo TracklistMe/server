@@ -207,6 +207,7 @@ app.get('/images/*', function(req, res, next) {
     };
 
     var image = req.originalUrl.substring(8, req.originalUrl.length);
+    image = decodeURIComponent(image);
     console.log(image);
     cloudstorage.createSignedUrl(image, "GET", 50, function(err, url) {
         if (err) {
