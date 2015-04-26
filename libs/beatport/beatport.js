@@ -428,26 +428,26 @@ function addGenre(genreName, track) {
 
 function addArtist(artistName, trackObject) {
     var deferred = Q.defer();
-    dbProxy.Artist.find({
+
+    dbProxy.Artist.findOrCreate({
         where: {
             displayName: artistName
+        },
+        defaults: {
+            displayName: artistName
         }
-    })
-        .then(function(artist) {
-            if (!artist) {
-                dbProxy.Artist.create({
-                    displayName: artistName
-                }).success(function(newArtist) {
-                    trackObject.addProducer(newArtist).then(function(associationArtist) {
-                        deferred.resolve(newArtist)
-                    })
-                })
-            } else {
-                trackObject.addProducer(artist).then(function(associationArtist) {
-                    deferred.resolve(artist);
-                })
-            }
+    }).spread(function(artist, created) {
+
+        trackObject.addProducer(artist).then(function(associationArtist) {
+            deferred.resolve(artist);
         })
+
+    })
+
+
+
+
+
     //setInterval(function(){ console.log("add artist"); console.log(deferred.promise.inspect(util, { showHidden: true, depth: null })) }, 3000);
     return deferred.promise;
 }
@@ -456,27 +456,21 @@ exports.addArtist = addArtist;
 
 function addRemixer(artistName, trackObject) {
     var deferred = Q.defer();
-    dbProxy.Artist.find({
+
+    dbProxy.Artist.findOrCreate({
         where: {
             displayName: artistName
+        },
+        defaults: {
+            displayName: artistName
         }
-    })
-        .then(function(artist) {
-            if (!artist) {
-                dbProxy.Artist.create({
-                    displayName: artistName
-                }).success(function(newArtist) {
-                    trackObject.addRemixer(newArtist).then(function(associationArtist) {
-                        deferred.resolve(newArtist)
-                    })
-                })
-            } else {
-                trackObject.addRemixer(artist).then(function(associationArtist) {
-                    deferred.resolve(artist);
-                })
-            }
+    }).spread(function(artist, created) {
+
+        trackObject.addRemixer(artist).then(function(associationArtist) {
+            deferred.resolve(newArtist)
         })
-    //setInterval(function(){ console.log("add remixer"); console.log(deferred.promise.inspect(util, { showHidden: true, depth: null })) }, 3000);
+
+    })
 
     return deferred.promise;
 }

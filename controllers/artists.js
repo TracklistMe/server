@@ -166,6 +166,7 @@ module.exports.controller = function(app) {
                     id: idArtist
                 }
             }).then(function(artist) {
+
                 var oldAvatar = artist.avatar;
                 artist.avatar = fileUtils.remoteImagePath(req, req.uploadedFile[0].resizedFilename);
 
@@ -183,6 +184,8 @@ module.exports.controller = function(app) {
                 });
             });
         });
+
+
 
 
 
