@@ -210,7 +210,12 @@ var Track = sequelizeObject.define('Track', {
     snippetPath: Sequelize.STRING,
     oggSnippetPath: Sequelize.STRING,
     waveform: Sequelize.TEXT,
-    lengthInSeconds: Sequelize.INTEGER
+    lengthInSeconds: Sequelize.INTEGER,
+    isActive: {
+        type: Sequelize.BOOLEAN,
+        allowNull: false,
+        defaultValue: true
+    }
 });
 exports.Track = Track;
 
