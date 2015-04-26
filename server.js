@@ -208,7 +208,7 @@ app.get('/images/*', function(req, res, next) {
 
     var image = req.originalUrl.substring(8, req.originalUrl.length);
     console.log(image);
-    cloudstorage.createSignedUrl(image, "GET", 20, function(err, url) {
+    cloudstorage.createSignedUrl(image, "GET", 50, function(err, url) {
         if (err) {
             //throw err;
             err.status = 404;
