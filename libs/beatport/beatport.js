@@ -269,7 +269,6 @@ function packRelease(xmlPath, idLabel) {
                                             file.status = "PROCESSING"
                                             def.resolve();
                                             file.save()
-                                            console.log("UPDATE CDN COVER")
 
                                         })
                                         return def.promise;
@@ -287,7 +286,7 @@ function packRelease(xmlPath, idLabel) {
                                             }
                                         }).then(function(file) {
                                             file.status = "PROCESSING"
-                                            console.log("UPDATE XML FILE")
+
                                             def.resolve();
                                             file.save()
                                             // ULTIMA CHIAMATA 
@@ -300,7 +299,7 @@ function packRelease(xmlPath, idLabel) {
 
 
                                 processQueueOfPromises(promises).then(function(result) {
-                                    console.log("QUEUE OF TRACKS  FINISHED!")
+
                                     promisesQueue.resolve(release);
                                 });
 
@@ -341,7 +340,7 @@ function transferFile(fullFilename, destination) {
             if (err) throw err;
             file.destroy().on('success', function(u) {
                 deferred.resolve(u);
-                console.log("REMOVED FILE")
+
             })
         });
 
@@ -353,7 +352,6 @@ function transferFile(fullFilename, destination) {
 
 function addTrack(trackObject, release, idLabel) {
     var deferred = Q.defer();
-    console.log("-- Called Add Track ");
     console.log(trackObject)
     var fileName = trackObject.trackAudioFile[0].audioFilename[0];
 
@@ -368,7 +366,6 @@ function addTrack(trackObject, release, idLabel) {
         console.log(err)
     }).success(function(track) {
 
-        console.log("---- Track Created ")
         release.addTrack(track, {
             position: trackObject.trackNumber[0]
         }).then(function(associationTrackRelease) {
@@ -411,7 +408,7 @@ function addTrack(trackObject, release, idLabel) {
             )
 
             processQueueOfPromises(artistInsertion).then(function(result) {
-                console.log("QUEUE OF PROMISES FINISHED!")
+
                 deferred.resolve();
             });
             /*
@@ -434,11 +431,10 @@ function processQueueOfPromises(promisesArray, deferred) {
     if (!deferred) {
         deferred = Q.defer();
     }
-    console.log("INVOKE QUEUE OF PROMISES")
     if (promisesArray.length > 0) {
         var wrapFunction = promisesArray.shift();
         wrapFunction().then(function() {
-            console.log("PROCESSO PROMISES " + promisesArray.length)
+
             processQueueOfPromises(promisesArray, deferred);
         })
     } else {
