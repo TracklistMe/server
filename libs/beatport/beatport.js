@@ -62,7 +62,6 @@ function process(xmlArrayList, idLabel) {
 
     for (var i = 0; i < xmlArrayList.length; i++) {
         promises.push(packRelease(xmlArrayList[i].path, idLabel));
-
     }
 
 
@@ -70,8 +69,9 @@ function process(xmlArrayList, idLabel) {
     Q.allSettled(promises)
         .then(function(results) {
             results.forEach(function(result) {
-                console.log("Release Processed --------")
-                console.log("RELEASE" + result.value.dataValues.id)
+                console.log(" -----------------  Release Processed  ------------")
+                console.log("RELEASE")
+                console.log(result)
 
                 /*   controllerRelease.consolideJSON(result.value.dataValues.id).then(function(){
                     console.log("JSON --- SALVATO")
@@ -115,7 +115,7 @@ function validateFile(xmlPath) {
             */
 
             fs.readFile(filename, "utf8", function(err, data) {
-                console.log(data);
+
 
                 try {
                     var parser = new xml2js.Parser();
@@ -252,48 +252,61 @@ function packRelease(xmlPath, idLabel) {
                             label.addReleases(release).then(function(associationRelease) {
 
                                 for (var j = 0; j < resultXML.release.tracks[0].track.length; j++) {
-                                    promises.push(addTrack(resultXML.release.tracks[0].track[j], release, idLabel));
+
+                                    promises.push(wrapFunction(addTrack, this, [resultXML.release.tracks[0].track[j], release, idLabel]));
                                 }
-
-
 
 
                                 // Temporarily disable cover in dropzone 
                                 promises.push(
+                                    wrapFunction(function() {
+                                        var def = Q.defer();
+                                        dbProxy.DropZoneFile.find({
+                                            where: {
+                                                path: cdnCover
+                                            }
+                                        }).then(function(file) {
+                                            file.status = "PROCESSING"
+                                            def.resolve();
+                                            file.save()
+                                            console.log("UPDATE CDN COVER")
 
-                                    dbProxy.DropZoneFile.find({
-                                        where: {
-                                            path: cdnCover
-                                        }
-                                    }).then(function(file) {
-                                        file.status = "PROCESSING"
-                                        file.save()
-                                    })
+                                        })
+                                        return def.promise;
+                                    }, this, [])
                                 );
 
                                 // Temporarilu disable xml in dropzone 
                                 promises.push(
+                                    wrapFunction(function() {
+                                        var def = Q.defer();
 
-                                    dbProxy.DropZoneFile.find({
-                                        where: {
-                                            path: xmlPath
-                                        }
-                                    }).then(function(file) {
-                                        file.status = "PROCESSING"
-                                        file.save()
-                                    })
+                                        dbProxy.DropZoneFile.find({
+                                            where: {
+                                                path: xmlPath
+                                            }
+                                        }).then(function(file) {
+                                            file.status = "PROCESSING"
+                                            console.log("UPDATE XML FILE")
+                                            def.resolve();
+                                            file.save()
+                                            // ULTIMA CHIAMATA 
+
+                                        })
+                                        return def.promise;
+                                    }, this, [])
                                 );
 
-                                Q.allSettled(promises)
-                                    .then(function(results) {
-                                        console.log("GOT A RESULT")
-                                        results.forEach(function(result) {
-                                            console.log("settle Request")
-                                        });
 
 
-                                        promisesQueue.resolve(release);
-                                    })
+                                processQueueOfPromises(promises).then(function(result) {
+                                    console.log("QUEUE OF TRACKS  FINISHED!")
+                                    promisesQueue.resolve(release);
+                                });
+
+
+
+
                             })
 
                         });
@@ -360,51 +373,78 @@ function addTrack(trackObject, release, idLabel) {
             position: trackObject.trackNumber[0]
         }).then(function(associationTrackRelease) {
             var artistInsertion = []
-            artistInsertion.push(addGenre(trackObject.trackGenre, track));
+            artistInsertion.push(wrapFunction(addGenre, this, [trackObject.trackGenre, track]));
             for (var j = 0; j < trackObject.trackArtists[0].artistName.length; j++) {
                 console.log("----- Call Insertion of Artist for this track ")
-                artistInsertion.push(addArtist(trackObject.trackArtists[0].artistName[j], track))
+                artistInsertion.push(wrapFunction(addArtist, this, [trackObject.trackArtists[0].artistName[j], track]))
 
             }
 
             if (trackObject.trackRemixers) {
                 for (var j = 0; j < trackObject.trackRemixers[0].remixerName.length; j++) {
                     console.log("----- Call Insertion of Remixes for this track ")
-                    artistInsertion.push(addRemixer(trackObject.trackRemixers[0].remixerName[j], track))
+                    artistInsertion.push(wrapFunction(addRemixer, this, [trackObject.trackRemixers[0].remixerName[j], track]))
                 }
             }
 
+            // ADD THE LAST PROMISE THE RESOLVE THE CURRENT ONE 
 
+            artistInsertion.push(
+                wrapFunction(
+                    function() {
 
-
-            Q.allSettled(artistInsertion)
-                .then(function(results) {
-                    console.log("GOT A RESULT")
-                    results.forEach(function(result) {
-
-                    });
-                    console.log("ALL INSERTION FOR THIS TRACK ARE SETTLED ")
-                    dbProxy.DropZoneFile.find({
-                        where: {
-                            path: cdnPATH
-                        }
-                    }).on('success', function(file) {
-                        file.status = "PROCESSING"
-                        file.save().on('success', function(u) {
-                            console.log("Resolve the main promise for this track")
-                            deferred.resolve(results);
+                        var def = Q.defer();
+                        dbProxy.DropZoneFile.find({
+                            where: {
+                                path: cdnPATH
+                            }
+                        }).on('success', function(file) {
+                            file.status = "PROCESSING"
+                            file.save().on('success', function(u) {
+                                console.log("Resolve the main promise for this track: " + trackObject.trackNumber[0])
+                                def.resolve();
+                            })
                         })
-                    })
+                        return def.promise;
+                    }, this, [])
 
+            )
 
+            processQueueOfPromises(artistInsertion).then(function(result) {
+                console.log("QUEUE OF PROMISES FINISHED!")
+                deferred.resolve();
+            });
+            /*
+            var result = Q();
+            artistInsertion.forEach(function(f) {
+                result = result.then(f);
+            });
 
+            */
 
-                })
         })
     });
-    // setInterval(function(){ console.log("add track"); console.log(deferred.promise.inspect(util, { showHidden: true, depth: null })) }, 3000);
+
 
     return deferred.promise;
+}
+
+
+function processQueueOfPromises(promisesArray, deferred) {
+    if (!deferred) {
+        deferred = Q.defer();
+    }
+    console.log("INVOKE QUEUE OF PROMISES")
+    if (promisesArray.length > 0) {
+        var wrapFunction = promisesArray.shift();
+        wrapFunction().then(function() {
+            console.log("PROCESSO PROMISES " + promisesArray.length)
+            processQueueOfPromises(promisesArray, deferred);
+        })
+    } else {
+        deferred.resolve();
+    }
+    return deferred.promise
 }
 
 function addGenre(genreName, track) {
@@ -415,6 +455,7 @@ function addGenre(genreName, track) {
             name: genreName
         }
     }).then(function(genre) {
+        console.log("ADDED GENRE")
         track.addGenre(genre).then(function(associationGenre) {
             deferred.resolve(associationGenre)
         })
@@ -428,7 +469,7 @@ function addGenre(genreName, track) {
 
 function addArtist(artistName, trackObject) {
     var deferred = Q.defer();
-
+    console.log("ADDING AS ARTIST " + artistName)
     dbProxy.Artist.findOrCreate({
         where: {
             displayName: artistName
@@ -437,16 +478,12 @@ function addArtist(artistName, trackObject) {
             displayName: artistName
         }
     }).spread(function(artist, created) {
-
+        console.log("ADDEDed PRODUCER " + artistName)
         trackObject.addProducer(artist).then(function(associationArtist) {
-            deferred.resolve(artist);
+            deferred.resolve(associationArtist);
         })
 
     })
-
-
-
-
 
     //setInterval(function(){ console.log("add artist"); console.log(deferred.promise.inspect(util, { showHidden: true, depth: null })) }, 3000);
     return deferred.promise;
@@ -456,7 +493,7 @@ exports.addArtist = addArtist;
 
 function addRemixer(artistName, trackObject) {
     var deferred = Q.defer();
-
+    console.log("ADDING AS REMIXER " + artistName)
     dbProxy.Artist.findOrCreate({
         where: {
             displayName: artistName
@@ -465,12 +502,20 @@ function addRemixer(artistName, trackObject) {
             displayName: artistName
         }
     }).spread(function(artist, created) {
-
+        console.log("ADDed REMIXER " + artistName)
         trackObject.addRemixer(artist).then(function(associationArtist) {
-            deferred.resolve(newArtist)
+
+            deferred.resolve(associationArtist)
         })
 
     })
-
     return deferred.promise;
+}
+
+
+var wrapFunction = function(fn, context, params) {
+    return function() {
+        return fn.apply(context, params);
+    }
+
 }

@@ -727,7 +727,8 @@ module.exports.controller = function(app) {
                 beatport.process(xmls, idLabel).then(function(results) {
                     console.log("--server response")
                     results.forEach(function(result) {
-
+                        console.log("FOR EACH RESULT ")
+                        console.log(result)
                         // TODO REDUNDANT SAVE JSON AND SEND RABBIT 
                         // 
                         model.Release.find({
