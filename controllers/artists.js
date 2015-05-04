@@ -6,6 +6,7 @@ var fileUtils = rootRequire('utils/file-utils');
 var authenticationUtils = rootRequire('utils/authentication-utils');
 var model = rootRequire('models/model');
 var cloudstorage = rootRequire('libs/cloudstorage/cloudstorage');
+var AVATAR_DEFAULT = "img/default/avatar.gif";
 
 module.exports.controller = function(app) {
 
@@ -172,7 +173,9 @@ module.exports.controller = function(app) {
 
                 artist.save().then(function(artist) {
                     // we remove old avatars from the CDN
-                    cloudstorage.remove(oldAvatar);
+                    if (oldAvatar != AVATAR_DEFAULT) {
+                        cloudstorage.remove(oldAvatar);
+                    }
                     // We remove temporarily stored files
                     fs.unlink(fileUtils.localImagePath(req, req.uploadedFile[0].filename));
                     fs.unlink(fileUtils.localImagePath(req, req.uploadedFile[0].resizedFilename));
