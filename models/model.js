@@ -156,6 +156,16 @@ exports.Artist = Artist;
   Release
 */
 
+/**
+ * Status that a release may have
+ **/
+exports.ReleaseStatus = {
+    INCOMPLETE: 'INCOMPLETE',
+    TO_BE_PROCESSED: 'TO_BE_PROCESSED',
+    PROCESSED: 'PROCESSED',
+    PROCESSING_FAILED: 'PROCESSING_FAILED'
+}
+
 var Release = sequelizeObject.define('Release', {
     id: {
         type: Sequelize.INTEGER,
@@ -174,6 +184,15 @@ var Release = sequelizeObject.define('Release', {
     UPC: Sequelize.STRING,
     GRid: Sequelize.STRING,
     description: Sequelize.STRING,
+    status: {
+        type: Sequelize.ENUM(
+            exports.ReleaseStatus.INCOMPLETE,
+            exports.ReleaseStatus.TO_BE_PROCESSED,
+            exports.ReleaseStatus.PROCESSED,
+            exports.ReleaseStatus.PROCESSING_FAILED), 
+        defaultValue: exports.ReleaseStatus.TO_BE_PROCESSED, 
+        allowNull: false
+    },
     status: Sequelize.STRING,
     json: Sequelize.STRING,
     metadataFile: Sequelize.STRING,
@@ -196,6 +215,16 @@ exports.Genre = Genre;
 
 /* Tracks */
 
+/**
+ * Status that a track may have
+ **/
+exports.TrackStatus = {
+    INCOMPLETE: 'INCOMPLETE',
+    TO_BE_PROCESSED: 'TO_BE_PROCESSED',
+    PROCESSED: 'PROCESSED',
+    PROCESSING_FAILED: 'PROCESSING_FAILED'
+}
+
 var Track = sequelizeObject.define('Track', {
     id: {
         type: Sequelize.INTEGER,
@@ -215,10 +244,19 @@ var Track = sequelizeObject.define('Track', {
         type: Sequelize.BOOLEAN,
         allowNull: false,
         defaultValue: true
-    }
+    },
+    status: {
+        type: Sequelize.ENUM(
+            exports.ReleaseStatus.INCOMPLETE,
+            exports.ReleaseStatus.TO_BE_PROCESSED,
+            exports.ReleaseStatus.PROCESSED,
+            exports.ReleaseStatus.PROCESSING_FAILED), 
+        defaultValue: exports.ReleaseStatus.TO_BE_PROCESSED, 
+        allowNull: false
+    },
+    errorMessage: Sequelize.STRING
 });
 exports.Track = Track;
-
 
 /* 
   Many to Many association and tables

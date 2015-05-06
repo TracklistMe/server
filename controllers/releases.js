@@ -18,7 +18,7 @@ module.exports.controller = function(app) {
     // 2) Remove tracks
     function rollbackRelease(release, databaseRelease) {
 
-        databaseRelease.status = "PROCESSING_FAILED";
+        databaseRelease.status = model.ReleaseStatus.PROCESSING_FAILED;
 	
         release.Tracks.forEach(function(track) {
 
@@ -35,6 +35,8 @@ module.exports.controller = function(app) {
                     databaseTrack.oggSnippetPath = null;
                     databaseTrack.waveform = null;
                     databaseTrack.lengthInSeconds = null;
+                    databaseTrack.status = model.TrackStatus.PROCESSING_FAILED;
+                    databaseTrack.errorMessage = track.errorMessage;
                     model.DropZoneFile.find({
                         where: {
                             path: track.path
@@ -96,6 +98,7 @@ module.exports.controller = function(app) {
                 databaseTrack.oggSnippetPath = track.oggSnippetPath;
                 databaseTrack.mp3Path = track.mp3Path;
                 databaseTrack.lengthInSeconds = track.lengthInSeconds;
+                databaseTrack.status = model.TrackStatus.PROCESSED;
 
                 // Move lossless file
                 var trackFilename = path.basename(databaseTrack.path);
@@ -238,7 +241,7 @@ module.exports.controller = function(app) {
     // 5) Remove metadata file, if any
     function commitRelease(release, databaseRelease) {
 
-        databaseRelease.status = "PROCESSED";
+        databaseRelease.status = model.ReleaseStatus.PROCESSED;
 
         var updateTrackPromises = [];
 
@@ -319,7 +322,7 @@ module.exports.controller = function(app) {
             }).then(function(databaseRelease) {
                 if (!databaseRelease) return;
 
-                if (release.status == "PROCESSED") {
+                if (release.status == model.ReleaseStatus.PROCESSED) {
                     console.log('Release with id ' + release.id + ' has been correctly processed');
                     commitRelease(release, databaseRelease);
                 } else {
