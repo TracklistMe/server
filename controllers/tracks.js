@@ -38,7 +38,6 @@ module.exports.controller = function(app) {
     });
 
     function urlForProperty(trackId, property, callback) {
-        var trackId = req.params.id;
         model.Track.find({
             where: {
                 id: trackId
