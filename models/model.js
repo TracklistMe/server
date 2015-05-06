@@ -258,6 +258,75 @@ var Track = sequelizeObject.define('Track', {
 });
 exports.Track = Track;
 
+/**
+ * CartItem
+ **/
+
+var CartItem = sequelizeObject.define('CartItem', {
+    id: {
+        type: Sequelize.INTEGER,
+        autoIncrement: true,
+        primaryKey: true
+    },
+    transactionStarted: Sequelize.BOOLEAN
+});
+
+exports.CartItem = CartItem;
+
+CartItem.belongsTo(User, {
+    foreignKey: {
+        name: 'UserId',
+        allowNull: false
+    },
+    onDelete: 'CASCADE'
+});
+
+CartItem.belongsTo(Track, {
+    foreignKey: {
+        name: 'TrackId',
+        allowNull: true
+    },
+    onDelete: 'CASCADE'
+});
+
+CartItem.belongsTo(Release, {
+    foreignKey: {
+        name: 'ReleaseId',
+        allowNull: true
+    },
+    onDelete: 'CASCADE'
+});
+
+/**
+ * Library
+ **/
+
+var LibraryItem = sequelizeObject.define('LibraryItem', {
+    id: {
+        type: Sequelize.INTEGER,
+        autoIncrement: true,
+        primaryKey: true
+    }    
+});
+
+exports.LibraryItem = LibraryItem;
+
+Track.belongsToMany(User, { 
+    through: LibraryItem,
+    foreignKey: {
+        name: 'TrackId',
+        allowNull: false
+    }
+});
+
+User.belongsToMany(Track, { 
+    through: LibraryItem,
+    foreignKey: {
+        name: 'UserId',
+        allowNull: false
+    }
+});
+
 /* 
   Many to Many association and tables
 */
