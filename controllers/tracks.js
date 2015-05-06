@@ -55,7 +55,7 @@ module.exports.controller = function(app) {
      * GET /tracks/:id/snippet/mp3
      * Return the snippet for the track in mp3 format
      **/
-    app.get('/tracks/:id/snippet/mp3', function(req, res) {
+    app.get('/tracks/:id/snippet/mp3', function(req, res, next) {
 
         var trackId = req.params.id;
         urlForProperty(trackId, 'snippetPath', function(err, url) {
@@ -73,7 +73,7 @@ module.exports.controller = function(app) {
      * GET /tracks/:id/snippet/ogg
      * Return the snippet for the track in ogg format
      **/
-    app.get('/tracks/:id/snippet/ogg', function(req, res) {
+    app.get('/tracks/:id/snippet/ogg', function(req, res, next) {
 
         var trackId = req.params.id;
         urlForProperty(trackId, 'oggSnippetPath', function(err, url) {
@@ -91,10 +91,10 @@ module.exports.controller = function(app) {
      * GET /tracks/:id/waveform
      * Return the waveform file for the track in json format
      **/
-    app.get('/tracks/:id/waveform', function(req, res) {
+    app.get('/tracks/:id/waveform', function(req, res, next) {
 
         var trackId = req.params.id;
-        urlForProperty(trackId, 'waveformPath', function(err, url) {
+        urlForProperty(trackId, 'waveform', function(err, url) {
             if (err) {
                 //throw err;
                 err.status = 404;
@@ -110,7 +110,7 @@ module.exports.controller = function(app) {
      * Return the complete lossless file for the track in wav format
      * TODO: Be sure that the authenticated user bought the track
      **/
-    app.get('/tracks/:id/download/lossless', function(req, res) {
+    app.get('/tracks/:id/download/lossless', function(req, res, next) {
 
         var trackId = req.params.id;
         urlForProperty(trackId, 'path', function(err, url) {
@@ -129,7 +129,7 @@ module.exports.controller = function(app) {
      * Return the complete file for the track in mp3 format
      * TODO: Be sure that the authenticated user bought the track
      **/
-    app.get('/tracks/:id/download/mp3', function(req, res) {
+    app.get('/tracks/:id/download/mp3', function(req, res, next) {
 
         var trackId = req.params.id;
         urlForProperty(trackId, 'mp3Path', function(err, url) {
