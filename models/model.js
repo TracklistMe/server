@@ -306,7 +306,7 @@ var LibraryItem = sequelizeObject.define('LibraryItem', {
         type: Sequelize.INTEGER,
         autoIncrement: true,
         primaryKey: true
-    }    
+    } 
 });
 
 exports.LibraryItem = LibraryItem;
@@ -325,6 +325,60 @@ User.belongsToMany(Track, {
         name: 'UserId',
         allowNull: false
     }
+});
+
+/**
+ * Master Price
+ **/
+
+var MasterPrice = sequelizeObject.define('MasterPrice', {
+    id: {
+        type: Sequelize.INTEGER,
+        autoIncrement: true,
+        primaryKey: true
+    },
+    price: Sequelize.DECIMAL(10, 2)
+});
+
+/**
+ * Currency
+ **/
+
+var Currency = sequelizeObject.define('Currency', {
+    id: {
+        type: Sequelize.INTEGER,
+        autoIncrement: true,
+        primaryKey: true
+    },
+    name: Sequelize.STRING,
+    shortname: Sequelize.STRING(32),
+    symbol: Sequelize.STRING(4)//,
+});
+
+/**
+ * Converted Price
+ **/
+
+var ConvertedPrice = sequelizeObject.define('ConvertedPrice', {
+    price: Sequelize.DECIMAL(10, 2)
+});  
+
+Currency.belongsToMany(MasterPrice, { 
+    through: ConvertedPrice,
+    foreignKey: {
+        name: 'CurrencyId',
+        allowNull: false
+    },
+    onDelete: 'CASCADE'
+});
+
+MasterPrice.belongsToMany(Currency, { 
+    through: ConvertedPrice,
+    foreignKey: {
+        name: 'MasterPriceId',
+        allowNull: false
+    },
+    onDelete: 'CASCADE'
 });
 
 /* 
