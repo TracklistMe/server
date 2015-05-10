@@ -80,7 +80,7 @@ module.exports.controller = function(app) {
         databaseRelease.save();
     }
 
-    function updateTrackPromise(track, releaseId) {
+    function updateTrackPromise(track, releaseId, newCoverPath) {
         // Updated track
         var deferredUpdate = Q.defer();
         model.Track.find({
@@ -99,6 +99,7 @@ module.exports.controller = function(app) {
                 databaseTrack.mp3Path = track.mp3Path;
                 databaseTrack.lengthInSeconds = track.lengthInSeconds;
                 databaseTrack.status = model.TrackStatus.PROCESSED;
+                databaseTrack.cover = newCoverPath;
 
                 // Move lossless file
                 var trackFilename = path.basename(databaseTrack.path);
@@ -206,7 +207,7 @@ module.exports.controller = function(app) {
         return deferredUpdate.promise
     }
 
-    function moveCoverPromise(databaseRelease) {
+    function moveCoverPromise(databaseRelease, newCoverPath) {
         var deferredMove = Q.defer();
         model.DropZoneFile.find({
             where: {
@@ -216,10 +217,9 @@ module.exports.controller = function(app) {
             if (file) {
                 file.destroy().then(function() {
                     // Move lossless file
-                    var oldCoverPath = databaseRelease.cover
-                    var coverFilename = path.basename(oldCoverPath);
-                    databaseRelease.cover = fileUtils.remoteReleasePath(databaseRelease.id, coverFilename)
-                    cloudstorage.move(oldCoverPath, databaseRelease.cover, function(err) {
+                    var oldCoverPath = databaseRelease.cover;
+                    databaseRelease.cover = newCoverPath;
+                    cloudstorage.move(oldCoverPath, newCoverPath, function(err) {
                         if (err) deferredMove.reject(err);
                         else deferredMove.resolve();
                     });
@@ -244,12 +244,15 @@ module.exports.controller = function(app) {
         databaseRelease.status = model.ReleaseStatus.PROCESSED;
 
         var updateTrackPromises = [];
+        var oldCoverPath = databaseRelease.cover;
+        var coverFilename = path.basename(oldCoverPath);
+        var newCoverPath = fileUtils.remoteReleasePath(databaseRelease.id, coverFilename);
 
         for (var i = 0; i < release.Tracks.length; i++) {
             var track = release.Tracks[i];
 
             // Update track
-            updateTrackPromises.push(updateTrackPromise(track, release.id));
+            updateTrackPromises.push(updateTrackPromise(track, release.id, newCoverPath));
 
         }
 
@@ -281,7 +284,7 @@ module.exports.controller = function(app) {
                         morePromises.push(deleteDropZoneFilePromise(databaseRelease.metadataFile));
 
                     if (databaseRelease)
-                        morePromises.push(moveCoverPromise(databaseRelease));
+                        morePromises.push(moveCoverPromise(databaseRelease, newCoverPath));
 
                     Q.allSettled(morePromises).then(function(results) {
                         databaseRelease.metadataFile = "";
