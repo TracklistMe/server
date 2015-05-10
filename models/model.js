@@ -189,8 +189,8 @@ var Release = sequelizeObject.define('Release', {
             exports.ReleaseStatus.INCOMPLETE,
             exports.ReleaseStatus.TO_BE_PROCESSED,
             exports.ReleaseStatus.PROCESSED,
-            exports.ReleaseStatus.PROCESSING_FAILED), 
-        defaultValue: exports.ReleaseStatus.TO_BE_PROCESSED, 
+            exports.ReleaseStatus.PROCESSING_FAILED),
+        defaultValue: exports.ReleaseStatus.TO_BE_PROCESSED,
         allowNull: false
     },
     status: Sequelize.STRING,
@@ -250,8 +250,8 @@ var Track = sequelizeObject.define('Track', {
             exports.ReleaseStatus.INCOMPLETE,
             exports.ReleaseStatus.TO_BE_PROCESSED,
             exports.ReleaseStatus.PROCESSED,
-            exports.ReleaseStatus.PROCESSING_FAILED), 
-        defaultValue: exports.ReleaseStatus.TO_BE_PROCESSED, 
+            exports.ReleaseStatus.PROCESSING_FAILED),
+        defaultValue: exports.ReleaseStatus.TO_BE_PROCESSED,
         allowNull: false
     },
     errorMessage: Sequelize.STRING
@@ -272,7 +272,7 @@ var CartItem = sequelizeObject.define('CartItem', {
 });
 
 exports.CartItem = CartItem;
-
+User.hasMany(CartItem)
 CartItem.belongsTo(User, {
     foreignKey: {
         name: 'UserId',
@@ -306,12 +306,12 @@ var LibraryItem = sequelizeObject.define('LibraryItem', {
         type: Sequelize.INTEGER,
         autoIncrement: true,
         primaryKey: true
-    } 
+    }
 });
 
 exports.LibraryItem = LibraryItem;
 
-Track.belongsToMany(User, { 
+Track.belongsToMany(User, {
     through: LibraryItem,
     foreignKey: {
         name: 'TrackId',
@@ -319,7 +319,7 @@ Track.belongsToMany(User, {
     }
 });
 
-User.belongsToMany(Track, { 
+User.belongsToMany(Track, {
     through: LibraryItem,
     foreignKey: {
         name: 'UserId',
@@ -352,7 +352,7 @@ var Currency = sequelizeObject.define('Currency', {
     },
     name: Sequelize.STRING,
     shortname: Sequelize.STRING(32),
-    symbol: Sequelize.STRING(4)//,
+    symbol: Sequelize.STRING(4) //,
 });
 
 /**
@@ -361,9 +361,9 @@ var Currency = sequelizeObject.define('Currency', {
 
 var ConvertedPrice = sequelizeObject.define('ConvertedPrice', {
     price: Sequelize.DECIMAL(10, 2)
-});  
+});
 
-Currency.belongsToMany(MasterPrice, { 
+Currency.belongsToMany(MasterPrice, {
     through: ConvertedPrice,
     foreignKey: {
         name: 'CurrencyId',
@@ -372,7 +372,7 @@ Currency.belongsToMany(MasterPrice, {
     onDelete: 'CASCADE'
 });
 
-MasterPrice.belongsToMany(Currency, { 
+MasterPrice.belongsToMany(Currency, {
     through: ConvertedPrice,
     foreignKey: {
         name: 'MasterPriceId',

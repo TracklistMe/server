@@ -25,6 +25,73 @@ module.exports.controller = function(app) {
     });
 
     /**
+     * GET /me
+     * Get authenticated user profile information
+     */
+    app.get('/me/cart', authenticationUtils.ensureAuthenticated, function(req, res) {
+
+        model.User.find({
+            where: {
+                id: req.user
+            }
+        }).then(function(user) {
+            console.log("---------------------")
+            console.log(user)
+            user.getCartItems().success(function(items) {
+                res.send(items);
+            })
+
+        })
+    });
+
+    /**
+     * PUT /api/me
+     * Update the authenticated user profile information
+     **/
+    app.post('/me/cart/release/:id', authenticationUtils.ensureAuthenticated, function(req, res) {
+        var releaseId = req.params.id
+        model.User.find({
+            where: {
+                id: req.user
+            }
+        }).then(function(user) {
+            if (!user) {
+                return res.status(400).send({
+                    message: 'User not found'
+                });
+            }
+
+            model.CartItem.create({
+                UserId: user.id,
+                ReleaseId: releaseId
+            }).success(function(cartItem) {
+                res.send();
+            })
+        });
+    });
+
+    app.post('/me/cart/track/:id', authenticationUtils.ensureAuthenticated, function(req, res) {
+        var trackId = req.params.id
+        model.User.find({
+            where: {
+                id: req.user
+            }
+        }).then(function(user) {
+            if (!user) {
+                return res.status(400).send({
+                    message: 'User not found'
+                });
+            }
+
+            model.CartItem.create({
+                UserId: user.id,
+                TrackId: trackId
+            }).success(function(cartItem) {
+                res.send();
+            })
+        });
+    });
+    /**
      * GET /me/companies/
      * Get all companies managed by the authenticated user or all companies in the system
      * if the user is admin
@@ -48,6 +115,8 @@ module.exports.controller = function(app) {
 
         })
     });
+
+
 
     /**
      * GET /me/labels/
