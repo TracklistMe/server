@@ -35,9 +35,23 @@ module.exports.controller = function(app) {
                 id: req.user
             }
         }).then(function(user) {
-            console.log("---------------------")
-            console.log(user)
-            user.getCartItems().success(function(items) {
+
+            user.getCartItems({
+                include: [{
+                        model: model.Track,
+                        include: [{
+                            model: model.Artist,
+                            as: 'Producer'
+                        }]
+                    }, // load all pictures
+                    {
+                        model: model.Release,
+                        include: [{
+                            model: model.Track
+                        }]
+                    }, // load the profile picture. Notice that the spelling must be the exact same as the one in the association
+                ]
+            }).success(function(items) {
                 res.send(items);
             })
 
