@@ -62,7 +62,7 @@ module.exports.controller = function(app) {
             }
 
             model.CartItem.create({
-                UserId: user.id,
+                UserId: req.user,
                 ReleaseId: releaseId
             }).success(function(cartItem) {
                 res.send();
@@ -84,13 +84,46 @@ module.exports.controller = function(app) {
             }
 
             model.CartItem.create({
-                UserId: user.id,
+                UserId: req.user,
                 TrackId: trackId
             }).success(function(cartItem) {
                 res.send();
             })
         });
     });
+
+    app.delete('/me/cart/track/:id', authenticationUtils.ensureAuthenticated, function(req, res) {
+        var trackId = req.params.id;
+        console.log("DELETE TRACK")
+        model.CartItem.findOne({
+            where: {
+                UserId: req.user,
+                TrackId: trackId
+            }
+        }).then(function(cartItem) {
+            cartItem.destroy().then(function() {
+                res.send();
+            })
+            console.log(cartItem)
+        });
+    });
+
+    app.delete('/me/cart/release/:id', authenticationUtils.ensureAuthenticated, function(req, res) {
+        var releaseId = req.params.id;
+        console.log("DELETE RELEASE")
+        model.CartItem.findOne({
+            where: {
+                UserId: req.user,
+                ReleaseId: releaseId
+            }
+        }).then(function(cartItem) {
+            cartItem.destroy().then(function() {
+                res.send();
+            })
+            console.log(cartItem)
+        });
+    });
+
     /**
      * GET /me/companies/
      * Get all companies managed by the authenticated user or all companies in the system
