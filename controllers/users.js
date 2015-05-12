@@ -58,6 +58,36 @@ module.exports.controller = function(app) {
         })
     });
 
+    app.get('/me/cart/currency', authenticationUtils.ensureAuthenticated, function(req, res) {
+        if (req.user) {
+            // THERE IS A User, let's loook up his id
+            model.User.find({
+                where: {
+                    id: req.user
+                }
+            }).then(function(user) {
+
+                user.getCurrency({
+
+                }).success(function(currency) {
+                    res.send(currency)
+                })
+
+            })
+        } else {
+            // there is no user yet, let's pick a standard one 
+            model.Currency.find({
+                where: {
+                    id: 1
+                }
+            }).then(function(currency) {
+                res.send(currency)
+            })
+        }
+
+    });
+
+
     /**
      * PUT /api/me
      * Update the authenticated user profile information
