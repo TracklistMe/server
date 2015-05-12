@@ -15,7 +15,7 @@ module.exports.controller = function(app) {
      **/
     app.get('/currencies/', function(req, res) {
 
-        model.Currencies.findAll().then(function(currencies) {
+        model.Currency.findAll().then(function(currencies) {
             res.send(currencies);
         });
     });
@@ -28,12 +28,26 @@ module.exports.controller = function(app) {
      **/
     app.get('/currencies/:id', authenticationUtils.ensureAdmin, function(req, res) {
         var currencyId = req.params.id;
-        model.Currencies.find({
+        model.Currency.find({
             where: {
                 id: currencyId
             }
         }).then(function(currency) {
             res.send(currency);
         });
+    });
+
+    /**
+     * POST /currenices/
+     * Return
+     **/
+    app.post('/currencies/', authenticationUtils.ensureAdmin, function(req, res) {
+        model.Currency.create({
+            name: req.body.name,
+            shortname: req.body.shortname,
+            symbol: req.body.symbol
+        }).success(function(currency) {
+            res.send(currency);
+        })
     });
 } /* End of currencies controller */
