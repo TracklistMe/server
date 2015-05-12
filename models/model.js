@@ -272,7 +272,16 @@ var CartItem = sequelizeObject.define('CartItem', {
 });
 
 exports.CartItem = CartItem;
-User.hasMany(CartItem)
+
+User.hasMany(CartItem, {
+    foreignKey: {
+        name: 'UserId',
+        allowNull: false
+    },
+    onDelete: 'CASCADE'
+
+});
+
 CartItem.belongsTo(User, {
     foreignKey: {
         name: 'UserId',
@@ -332,12 +341,11 @@ User.belongsToMany(Track, {
  **/
 
 var MasterPrice = sequelizeObject.define('MasterPrice', {
-    id: {
-        type: Sequelize.INTEGER,
-        autoIncrement: true,
+    price: {
+        type: Sequelize.DECIMAL(10, 2),
+        autoIncrement: false,
         primaryKey: true
-    },
-    price: Sequelize.DECIMAL(10, 2)
+    }
 });
 
 /**
@@ -375,7 +383,27 @@ Currency.belongsToMany(MasterPrice, {
 MasterPrice.belongsToMany(Currency, {
     through: ConvertedPrice,
     foreignKey: {
-        name: 'MasterPriceId',
+        name: 'MasterPrice',
+        allowNull: false
+    },
+    onDelete: 'CASCADE'
+});
+
+/**
+ * Track and Release prices
+ **/
+
+Track.belongsTo(MasterPrice, {
+    foreignKey: {
+        name: 'Price',
+        allowNull: false
+    },
+    onDelete: 'CASCADE'
+});
+
+Release.belongsTo(MasterPrice, {
+    foreignKey: {
+        name: 'Price',
         allowNull: false
     },
     onDelete: 'CASCADE'
