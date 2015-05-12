@@ -6,7 +6,7 @@ module.exports = {
     migration.addColumn(
       'Releases',
       'Price', {
-        type: DataTypes.Sequelize.DECIMAL(10, 2),
+        type: DataTypes.DECIMAL(10, 2),
         references: "MasterPrices",
         referenceKey: "price",
         allowNull: false
