@@ -416,13 +416,12 @@ Release.belongsTo(MasterPrice, {
  * A user has an associated currency
  **/
 User.belongsTo(Currency, {
-    through: CurrencyId,
     foreignKey: {
         name: 'CurrencyId',
-        allowNull: false,
-        onUpdate: 'CASCADE',
-        onDelete: 'RESTRICT'
-    }
+        allowNull: false
+    },
+    onUpdate: 'CASCADE',
+    onDelete: 'RESTRICT'
 });
 
 /* 
