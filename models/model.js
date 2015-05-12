@@ -362,7 +362,7 @@ var Currency = sequelizeObject.define('Currency', {
     shortname: Sequelize.STRING(32),
     symbol: Sequelize.STRING(4) //,
 });
-
+exports.Currency = Currency;
 /**
  * Converted Price
  **/
