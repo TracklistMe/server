@@ -40,6 +40,8 @@ var artists = rootRequire('controllers/artists.js');
 var labels = rootRequire('controllers/labels.js');
 var tracks = rootRequire('controllers/tracks.js');
 var releases = rootRequire('controllers/releases.js');
+var currencies = rootRequire('controllers/currencies.js');
+var prices = rootRequire('controllers/prices.js');
 var genres = rootRequire('controllers/genres.js');
 var authenticators = rootRequire('controllers/authenticators.js');
 var stripePayment = rootRequire('controllers/stripePayment.js');
@@ -298,6 +300,8 @@ tracks.controller(app);
 releases.controller(app);
 genres.controller(app);
 authenticators.controller(app);
+currencies.controller(app);
+prices.controller(app);
 stripePayment.controller(app);
 
 /**

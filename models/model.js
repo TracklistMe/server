@@ -362,7 +362,7 @@ var Currency = sequelizeObject.define('Currency', {
     shortname: Sequelize.STRING(32),
     symbol: Sequelize.STRING(4) //,
 });
-
+exports.Currency = Currency;
 /**
  * Converted Price
  **/
@@ -380,6 +380,8 @@ Currency.belongsToMany(MasterPrice, {
     onDelete: 'CASCADE'
 });
 
+exports.ConvertedPrice = ConvertedPrice;
+
 MasterPrice.belongsToMany(Currency, {
     through: ConvertedPrice,
     foreignKey: {
@@ -388,7 +390,8 @@ MasterPrice.belongsToMany(Currency, {
     },
     onDelete: 'CASCADE'
 });
-
+exports.MasterPrice = MasterPrice;
+exports.ConvertedPrice = ConvertedPrice;
 /**
  * Track and Release prices
  **/
