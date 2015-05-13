@@ -8,7 +8,7 @@ module.exports = {
       'Price', {
         type: DataTypes.DECIMAL(10, 2),
         references: "MasterPrices",
-        referenceKey: "price",
+        referencesKey: "price",
         allowNull: false,
         defaultValue: 1.0
       });
@@ -22,7 +22,7 @@ module.exports = {
       'Price', {
         type: DataTypes.DECIMAL(10, 2),
         references: "MasterPrices",
-        referenceKey: "price",
+        referencesKey: "price",
         allowNull: false
       });
     done();
