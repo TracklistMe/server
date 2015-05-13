@@ -381,7 +381,7 @@ Currency.belongsToMany(MasterPrice, {
 });
 
 exports.ConvertedPrice = ConvertedPrice;
-
+Currency.hasMany(ConvertedPrice)
 MasterPrice.belongsToMany(Currency, {
     through: ConvertedPrice,
     foreignKey: {
