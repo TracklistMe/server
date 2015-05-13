@@ -399,7 +399,8 @@ exports.ConvertedPrice = ConvertedPrice;
 Track.belongsTo(MasterPrice, {
     foreignKey: {
         name: 'Price',
-        allowNull: false
+        allowNull: false,
+        defaultValue: 1.0
     },
     onDelete: 'CASCADE'
 });
@@ -407,7 +408,8 @@ Track.belongsTo(MasterPrice, {
 Release.belongsTo(MasterPrice, {
     foreignKey: {
         name: 'Price',
-        allowNull: false
+        allowNull: false,
+        defaultValue: 1.0
     },
     onDelete: 'CASCADE'
 });
