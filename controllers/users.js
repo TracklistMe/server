@@ -73,7 +73,9 @@ module.exports.controller = function(app) {
             }).then(function(user) {
 
                 user.getCurrency({
-
+                    include: {
+                        model: model.ConvertedPrice
+                    }
                 }).success(function(currency) {
                     res.send(currency)
                 })
