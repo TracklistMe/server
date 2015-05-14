@@ -68,7 +68,6 @@ module.exports.controller = function(app) {
         // A User that lives in london, is traveling to US, which currency shall we display? 
         // So far we geolocalize every request
         var ip = req.header('x-forwarded-for') || req.connection.remoteAddress;
-	console.log(ip);
         var geo = geoip.lookup(ip);
         var country = 'US';
         if (geo) {
