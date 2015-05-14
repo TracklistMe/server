@@ -67,7 +67,8 @@ module.exports.controller = function(app) {
         // QUESTION:  shall we change CURRENCY at every connection ? 
         // A User that lives in london, is traveling to US, which currency shall we display? 
         // So far we geolocalize every request
-        var ip = req.connection.remoteAddress;
+        var ip = req.header('x-forwarded-for') || req.connection.remoteAddress;
+	console.log(ip);
         var geo = geoip.lookup(ip);
         var country = 'US';
         if (geo) {
