@@ -1,6 +1,7 @@
 'use strict';
 
 var fs = require('fs-extra');
+var geoip = require('geoip-lite');
 
 var fileUtils = rootRequire('utils/file-utils');
 var authenticationUtils = rootRequire('utils/authentication-utils');
@@ -58,45 +59,43 @@ module.exports.controller = function(app) {
         })
     });
 
+    /**
+     * GET '/me/cart/currency'
+     * Get user's currency based on geolocalization
+     **/
     app.get('/me/cart/currency', authenticationUtils.ensureAuthenticated, function(req, res) {
         // QUESTION:  shall we change CURRENCY at every connection ? 
         // A User that lives in london, is traveling to US, which currency shall we display? 
-
-        if (req.user) {
-            // THERE IS A User, let's loook up his id
-
-
-            model.User.find({
-                where: {
-                    id: req.user
-                }
-            }).then(function(user) {
-
-                user.getCurrency({
-                    include: {
-                        model: model.ConvertedPrice
-                    }
-                }).success(function(currency) {
-                    res.send(currency)
-                })
-
-            })
-
-        } else {
-            // there is no user yet, let's pick a standard currency
-            // 
-            // TODO :  implement geoIP here.  
-
-
-            model.Currency.find({
-                where: {
-                    id: 1
-                }
-            }).then(function(currency) {
-                res.send(currency)
-            })
+        // So far we geolocalize every request
+        var ip = req.connection.remoteAddress;
+        var geo = geoip.lookup(ip);
+        var country = 'US';
+        if (geo) {
+            country = geo.country;
         }
 
+        model.Internationalization.find({
+            where: {
+                country: country
+            },
+            include: [
+                { 
+                    model: model.Currency
+                }
+            ]
+        }).then(function(country) {
+            if (country) {
+                res.send(country.Currency);
+            } else {
+                model.Currency.find({
+                    where: {
+                        shortname: model.DefaultCurrency
+                    }
+                }).then(function(currency) {
+                    res.send(currency);
+                });
+            }
+        });
     });
 
 
@@ -144,7 +143,7 @@ module.exports.controller = function(app) {
                 TrackId: trackId
             }).success(function(cartItem) {
                 res.send();
-            })
+            });
         });
     });
 

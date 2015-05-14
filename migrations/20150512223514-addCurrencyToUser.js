@@ -8,7 +8,7 @@ module.exports = {
       'CurrencyId', {
         type: DataTypes.INTEGER,
         references: "Currencies",
-        referenceKey: "id",
+        referencesKey: "id",
         allowNull: false,
         onUpdate: 'cascade',
         onDelete: 'restrict'

@@ -363,6 +363,28 @@ var Currency = sequelizeObject.define('Currency', {
     symbol: Sequelize.STRING(4) //,
 });
 exports.Currency = Currency;
+
+/**
+ * Internationalization
+ **/
+
+var Internationalization = sequelizeObject.define('Internationalization', {
+    country: {
+        type: Sequelize.STRING(2),
+        primaryKey: true
+    }
+});
+exports.Internationalization = Internationalization;
+
+Internationalization.belongsTo(Currency, {
+    foreignKey: {
+        name: 'LocalCurrency',
+        allowNull: false
+    },
+    onDelete: 'RESTRICT',
+    onUpdate: 'CASCADE'
+});
+
 /**
  * Converted Price
  **/
@@ -392,6 +414,7 @@ MasterPrice.belongsToMany(Currency, {
 });
 exports.MasterPrice = MasterPrice;
 exports.ConvertedPrice = ConvertedPrice;
+
 /**
  * Track and Release prices
  **/
@@ -408,8 +431,7 @@ Track.belongsTo(MasterPrice, {
 Release.belongsTo(MasterPrice, {
     foreignKey: {
         name: 'Price',
-        allowNull: false,
-        defaultValue: 1.0
+        allowNull: true
     },
     onDelete: 'CASCADE'
 });
@@ -492,4 +514,32 @@ Artist.belongsToMany(User)
 Track.belongsToMany(Genre)
 Genre.belongsToMany(Track)
 
-//sequelizeObject.sync();
+/**
+ * Create database and default entities if do not exist
+ **/
+/*
+sequelizeObject.sync().then(function() {
+    Currency.find({
+        where: {
+            shortname: 'USD'
+        }
+    }).then(function(currency) {
+        if (!currency) {
+            Currency.create({
+                name: "United States Dollar",
+                shortname: "USD",
+                symbol: "$"
+            }).then(function(currency) {
+                DefaultCurrency = currency;
+                Internationalization.create({
+                    country: "US",
+                    LocalCurrency: currency.id
+                });
+            });
+        } else {
+            DefaultCurrency = currency;
+        }
+    });
+});
+*/
+exports.DefaultCurrency = 'USD';
