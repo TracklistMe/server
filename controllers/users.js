@@ -70,7 +70,7 @@ module.exports.controller = function(app) {
         var ip = req.header('x-forwarded-for') || req.connection.remoteAddress;
 
         var geo = geoip.lookup(ip);
-        var country = 'GB';
+        var country = 'US';
         if (geo) {
             country = geo.country;
         }
