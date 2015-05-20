@@ -82,7 +82,10 @@ module.exports.controller = function(app) {
                 country: country
             },
             include: [{
-                model: model.Currency
+                model: model.Currency,
+                include: {
+                    model: model.ConvertedPrice
+                }
             }]
         }).then(function(country) {
             if (country) {
