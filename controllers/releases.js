@@ -19,7 +19,7 @@ module.exports.controller = function(app) {
     function rollbackRelease(release, databaseRelease) {
 
         databaseRelease.status = model.ReleaseStatus.PROCESSING_FAILED;
-	
+
         release.Tracks.forEach(function(track) {
 
             // Restore track dropzone files
@@ -45,7 +45,7 @@ module.exports.controller = function(app) {
                         if (file) {
                             file.status = "UPLOADED";
                             file.save();
-			    console.log("Saving track " + databaseTrack.id + " Path " + track.path);
+                            console.log("Saving track " + databaseTrack.id + " Path " + track.path);
                             databaseTrack.save();
                         }
                     });
@@ -367,7 +367,7 @@ module.exports.controller = function(app) {
      * Return the release associated to the id
      * TODO why user has to be admin?
      **/
-    app.get('/releases/:id', authenticationUtils.ensureAuthenticated, authenticationUtils.ensureAdmin, function(req, res) {
+    app.get('/releases/:id', function(req, res) {
         var releaseId = req.params.id
 
         model.Release.find({
