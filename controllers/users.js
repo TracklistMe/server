@@ -63,7 +63,7 @@ module.exports.controller = function(app) {
      * GET '/me/cart/currency'
      * Get user's currency based on geolocalization
      **/
-    app.get('/me/cart/currency', authenticationUtils.ensureAuthenticated, function(req, res) {
+    app.get('/me/cart/currency', function(req, res) {
         // QUESTION:  shall we change CURRENCY at every connection ? 
         // A User that lives in london, is traveling to US, which currency shall we display? 
         // So far we geolocalize every request
