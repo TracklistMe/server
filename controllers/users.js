@@ -78,11 +78,9 @@ module.exports.controller = function(app) {
             where: {
                 country: country
             },
-            include: [
-                { 
-                    model: model.Currency
-                }
-            ]
+            include: [{
+                model: model.Currency
+            }]
         }).then(function(country) {
             if (country) {
                 res.send(country.Currency);
@@ -90,6 +88,9 @@ module.exports.controller = function(app) {
                 model.Currency.find({
                     where: {
                         shortname: model.DefaultCurrency
+                    },
+                    include: {
+                        model: model.ConvertedPrice
                     }
                 }).then(function(currency) {
                     res.send(currency);
