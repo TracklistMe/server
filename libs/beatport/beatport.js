@@ -59,7 +59,7 @@ exports.validate = validate;
 function process(xmlArrayList, idLabel) {
     var deferred = Q.defer();
     var promises = [];
-
+    console.log("START PROCESSING")
     for (var i = 0; i < xmlArrayList.length; i++) {
         promises.push(packRelease(xmlArrayList[i].path, idLabel));
     }
@@ -186,6 +186,7 @@ function validateFile(xmlPath) {
 
 
 function packRelease(xmlPath, idLabel) {
+    console.log("PACK RELEASE @beatport.js")
     var promisesQueue = Q.defer();
     var d = new Date();
     var n = d.getTime();

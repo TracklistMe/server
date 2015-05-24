@@ -713,6 +713,7 @@ module.exports.controller = function(app) {
                 id: idLabel
             }
         }).then(function(label) {
+            console.log("FOUND LABEL");
             if (!label) {
                 var err = new Error();
                 err.status = 404;
@@ -724,6 +725,7 @@ module.exports.controller = function(app) {
                     extension: "xml"
                 }
             }).then(function(xmls) {
+                console.log("XML parsing")
                 beatport.process(xmls, idLabel).then(function(results) {
                     console.log("--server response")
                     results.forEach(function(result) {
