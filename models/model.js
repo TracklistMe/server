@@ -239,6 +239,7 @@ var Track = sequelizeObject.define('Track', {
     snippetPath: Sequelize.STRING,
     oggSnippetPath: Sequelize.STRING,
     waveform: Sequelize.TEXT,
+    bpm: Sequelize.DECIMAL,
     lengthInSeconds: Sequelize.INTEGER,
     isActive: {
         type: Sequelize.BOOLEAN,

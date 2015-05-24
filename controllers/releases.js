@@ -35,6 +35,7 @@ module.exports.controller = function(app) {
                     databaseTrack.oggSnippetPath = null;
                     databaseTrack.waveform = null;
                     databaseTrack.lengthInSeconds = null;
+                    databaseTrack.bpm = null;
                     databaseTrack.status = model.TrackStatus.PROCESSING_FAILED;
                     databaseTrack.errorMessage = track.errorMessage;
                     model.DropZoneFile.find({
@@ -100,6 +101,7 @@ module.exports.controller = function(app) {
                 databaseTrack.lengthInSeconds = track.lengthInSeconds;
                 databaseTrack.status = model.TrackStatus.PROCESSED;
                 databaseTrack.cover = newCoverPath;
+                databaseTrack.bpm = track.bpm;
 
                 // Move lossless file
                 var trackFilename = path.basename(databaseTrack.path);
