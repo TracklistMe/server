@@ -6,7 +6,7 @@ module.exports = {
     migration.addColumn(
       'Tracks',
       'bpm',
-      DataTypes.DECIMAL
+      DataTypes.FLOAT
     );
     done();
   },
