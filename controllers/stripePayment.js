@@ -37,6 +37,9 @@ module.exports.controller = function(app) {
         var cart = req.body.cart;
         console.log(cart);
 
+        // RECALCULATE THE PRICE - serverside.
+        // 
+
         model.User.find({
             where: {
                 id: userId
@@ -66,14 +69,15 @@ module.exports.controller = function(app) {
                     currency: currency,
                     customer: customer.id,
                     metadata: {
-                        // CHANCE TO PIGGHY BACK HERE SOME ADDITIONAL INFORMATION
+                        // CHANCE TO PIGGy BACK HERE SOME ADDITIONAL INFORMATION
                         // TODO consider if we want to have a TRANSACTION ID in our db
-
                     },
                 }, function(err, charge) {
                     console.log(err)
                     if (!err) {
                         // GOT IT ! 
+                        // PAYMENT as been done correctly, should move the just bought tracks to the library of the user
+                        // RELEASE should be expanded into tracks.
                         // 
                         console.log("PAYMENT RECEIVED! ")
                         res.send(charge);
