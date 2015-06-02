@@ -30,7 +30,7 @@ var expressValidator = require('express-validator')
 var config = rootRequire('config/config');
 var cloudstorage = rootRequire('libs/cloudstorage/cloudstorage');
 var fileUtils = rootRequire('utils/file-utils');
-
+var stripe = require("stripe")("");
 /*
  * Require controllers
  */
