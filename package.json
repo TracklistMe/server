@@ -27,7 +27,7 @@
     "request": "^2.40.0",
     "sequelize": "^2.0.0-rc3",
     "sequelize-cli": "~1.0.4",
-    "stripe": "^3.3.2",
+    "stripe": "^3.3.4",
     "xml-stream": "~0.4.5",
     "xml2js": "^0.4.4"
   },
