@@ -33,46 +33,6 @@ function getGoogleAccessEmail() {
 exports.getGoogleAccessEmail = getGoogleAccessEmail;
 
 /**
- * Create HTTPs signed url
- * We need this function as cloudstorage API getSignedUrl supports only HTTP
- */
-function getSignedUrlHTTPS(options, callback) {
-  if (options.expires < Math.floor(Date.now() / 1000)) {
-    throw new Error('An expiration date cannot be in the past.');
-  }
-
-  options.action = {
-    read: 'GET',
-    write: 'PUT',
-    delete: 'DELETE'
-  }[options.action];
-
-  var name = encodeURIComponent(options.name);
-
-  options.resource = '/' + bucket.name + '/' + name;
-
-  var sign = crypto.createSign('RSA-SHA256');
-  sign.update([
-    options.action,
-    (options.contentMd5 || ''),
-    (options.contentType || ''),
-    options.expires,
-    (options.extensionHeaders || '') + options.resource
-  ].join('\n'));
-  var signature = sign.sign(credentials.private_key, 'base64');
-
-  callback(null, [
-    'https://storage.googleapis.com' + options.resource,
-    '?GoogleAccessId=' + credentials.client_email,
-    '&Expires=' + options.expires,
-    '&Signature=' + encodeURIComponent(signature)
-  ].join(''));
-
-}
-
-exports.getSignedUrlHTTPS = getSignedUrlHTTPS;
-
-/**
  * Function to create signed urls to google cloud storage
  * key: key of the object that we want to read (GET), write (PUT) or delete (DELETE)
  * method: HTTP method supported by the signed url (GET, PUT, DELETE)
@@ -103,53 +63,28 @@ function createSignedUrl(key, method, timeToLive, callback) {
             action = 'read';
             break;
     }
+    /**
     options.name = key;
     options.expires = Math.round(Date.now() / 1000) + timeToLive;
     getSignedUrlHTTPS(options, callback);
-    /**
+    **/
     var file = bucket.file(key);
     options.expires = Math.round(Date.now() / 1000) + timeToLive;
+    options.https = true;
     file.getSignedUrl(options, callback);
-    **/
+    
 }
 
 exports.createSignedUrl = createSignedUrl;
 
-
-/**
- * Creates a policy and its signature
- * TODO handle contentType
- **/
-function createSignedPolicy(key, expiration, maxByteSize, contentType) {
-    var policy = {
-        expiration: expiration.toISOString(),
-        conditions: [
-            ["eq", "$key", key],
-            ["content-length-range", 0, maxByteSize], {
-                "bucket": config.BUCKET_NAME
-            }
-        ]
-    };
-
-    var policyString = JSON.stringify(policy);
-    console.log(policyString);
-    var policyBase64 = new Buffer(policyString).toString('base64');
-    console.log(policyBase64);
-    var sign = crypto.createSign('RSA-SHA256');
-    sign.update(policyBase64);
-    var signature = sign.sign(googlePrivateKey, 'base64');
-    console.log(signature);
-
-    return {
-        policy: policyBase64,
-        signature: signature
-    };
+function getSignedPolicy(key, options, callback) {
+  bucket.file(key).getSignedPolicy(options, callback);
 }
 
-exports.createSignedPolicy = createSignedPolicy;
+exports.getSignedPolicy = getSignedPolicy;
 
 /**
- * Uploads a file to Cloud Storage0
+ * Uploads a file to Cloud Storage
  */
 function upload(filename, filepath, callback) {
     /*

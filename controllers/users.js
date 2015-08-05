@@ -52,7 +52,7 @@ module.exports.controller = function(app) {
                         }]
                     }, // load the profile picture. Notice that the spelling must be the exact same as the one in the association
                 ]
-            }).success(function(items) {
+            }).then(function(items) {
                 res.send(items);
             })
 
@@ -126,7 +126,7 @@ module.exports.controller = function(app) {
             model.CartItem.create({
                 UserId: req.user,
                 ReleaseId: releaseId
-            }).success(function(cartItem) {
+            }).then(function(cartItem) {
                 res.send();
             })
         });
@@ -148,7 +148,7 @@ module.exports.controller = function(app) {
             model.CartItem.create({
                 UserId: req.user,
                 TrackId: trackId
-            }).success(function(cartItem) {
+            }).then(function(cartItem) {
                 res.send();
             });
         });
@@ -199,11 +199,11 @@ module.exports.controller = function(app) {
             }
         }).then(function(user) {
             if (user.isAdmin) {
-                model.Company.findAll().success(function(companies) {
+                model.Company.findAll().then(function(companies) {
                     res.send(companies);
                 })
             } else {
-                user.getCompanies().success(function(companies) {
+                user.getCompanies().then(function(companies) {
                     res.send(companies);
                 })
             }
@@ -226,11 +226,11 @@ module.exports.controller = function(app) {
             }
         }).then(function(user) {
             if (user.isAdmin) {
-                model.Label.findAll().success(function(labels) {
+                model.Label.findAll().then(function(labels) {
                     res.send(labels);
                 })
             } else {
-                user.getLabels().success(function(labels) {
+                user.getLabels().then(function(labels) {
                     res.send(labels);
                 })
             }
@@ -250,11 +250,11 @@ module.exports.controller = function(app) {
             }
         }).then(function(user) {
             if (user.isAdmin) {
-                model.Artist.findAll().success(function(artists) {
+                model.Artist.findAll().then(function(artists) {
                     res.send(artists);
                 })
             } else {
-                user.getArtists().success(function(artists) {
+                user.getArtists().then(function(artists) {
                     res.send(artists);
                 })
             }
