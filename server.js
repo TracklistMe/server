@@ -8,7 +8,7 @@
  * Used to require modules starting from root of the app
  */
 global.rootRequire = function(name) {
-    return require(__dirname + '/' + name);
+  return require(__dirname + '/' + name);
 }
 
 
@@ -28,7 +28,7 @@ var expressValidator = require('express-validator')
 
 
 var config = rootRequire('config/config');
-var cloudstorage = rootRequire('libs/cloudstorage/cloudstorage');
+var cloudstorage = rootRequire('libs/cdn/cloudstorage');
 var fileUtils = rootRequire('utils/file-utils');
 var stripe = require("stripe")(config.STRIPE_PRIVATE);
 /*
@@ -110,42 +110,42 @@ var server = require('http').Server(app)
 var hostname;
 console.log(process.env.HOST)
 if (process.env.HOST == undefined) {
-    hostname = 'store.tracklist.me';
+  hostname = 'store.tracklist.me';
 } else {
-    hostname = process.env.HOST;
+  hostname = process.env.HOST;
 }
 console.log(hostname);
 app.set('port', process.env.PORT || 3000);
 app.use(logger('dev'));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({
-    extended: true
+  extended: true
 }));
 app.use(expressValidator());
 app.use(function(req, res, next) {
 
-    // Website you wish to allow to connect
-    res.setHeader('Access-Control-Allow-Origin', 'http://' + hostname);
-    // Request methods you wish to allow
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
+  // Website you wish to allow to connect
+  res.setHeader('Access-Control-Allow-Origin', 'http://' + hostname);
+  // Request methods you wish to allow
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
 
-    // Request headers you wish to allow
-    res.setHeader('Access-Control-Allow-Headers', 'my-header,X-Requested-With,content-type,Authorization');
-    //res.setHeader("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization");
-    // Set to true if you need the website to include cookies in the requests sent
-    // to the API (e.g. in case you use sessions)
-    res.setHeader('Access-Control-Allow-Credentials', true);
+  // Request headers you wish to allow
+  res.setHeader('Access-Control-Allow-Headers', 'my-header,X-Requested-With,content-type,Authorization');
+  //res.setHeader("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization");
+  // Set to true if you need the website to include cookies in the requests sent
+  // to the API (e.g. in case you use sessions)
+  res.setHeader('Access-Control-Allow-Credentials', true);
 
-    // Pass to next layer of middleware
-    next();
+  // Pass to next layer of middleware
+  next();
 });
 
 // Force HTTPS on Heroku
 if (app.get('env') === 'production') {
-    app.use(function(req, res, next) {
-        var protocol = req.get('x-forwarded-proto');
-        protocol == 'https' ? next() : res.redirect('https://' + req.hostname + req.url);
-    });
+  app.use(function(req, res, next) {
+    var protocol = req.get('x-forwarded-proto');
+    protocol == 'https' ? next() : res.redirect('https://' + req.hostname + req.url);
+  });
 }
 
 /* ========================================================== 
@@ -158,41 +158,41 @@ app.use(busboy());
  * TODO: remove
  **/
 app.get('/', function(req, res, next) {
-    cloudstorage.createSignedUrl("file.txt", "GET", 60, function(err, url) {
-        if (err) {
-            res.status(404)
-            res.json({
-                status: 'ERROR',
-                message: 'Signed url not found',
-                url: url
-            });
-            return;
-        }
-        res.json({
-            status: 'RUNNING',
-            message: 'Server is working fine',
-            url: url
-        });
+  cloudstorage.createSignedUrl("file.txt", "GET", 60, function(err, url) {
+    if (err) {
+      res.status(404)
+      res.json({
+        status: 'ERROR',
+        message: 'Signed url not found',
+        url: url
+      });
+      return;
+    }
+    res.json({
+      status: 'RUNNING',
+      message: 'Server is working fine',
+      url: url
     });
+  });
 });
 
 app.get('/testUpload', function(req, res) {
-    cloudstorage.upload('img/default.png',
-        __dirname + '/uploadFolder/img/1_1421078454067_KennyRandomWallpaper.jpg',
-        function(err, filename) {
-            if (err) {
-                console.log(err);
-                res.status = 500;
-                res.json({
-                    status: 'ERROR',
-                    message: 'Error uploading file',
-                    filename: filename
-                });
-                return;
-            }
-            res.status = 200;
-            res.send();
+  cloudstorage.upload('img/default.png',
+    __dirname + '/uploadFolder/img/1_1421078454067_KennyRandomWallpaper.jpg',
+    function(err, filename) {
+      if (err) {
+        console.log(err);
+        res.status = 500;
+        res.json({
+          status: 'ERROR',
+          message: 'Error uploading file',
+          filename: filename
         });
+        return;
+      }
+      res.status = 200;
+      res.send();
+    });
 });
 
 /**
@@ -200,31 +200,31 @@ app.get('/testUpload', function(req, res) {
  **/
 app.get('/images/*', function(req, res, next) {
 
-    console.log(req.originalUrl)
+  console.log(req.originalUrl)
 
-    var mimeTypes = {
-        "jpeg": "image/jpeg",
-        "jpg": "image/jpeg",
-        "png": "image/png"
-    };
+  var mimeTypes = {
+    "jpeg": "image/jpeg",
+    "jpg": "image/jpeg",
+    "png": "image/png"
+  };
 
-    var image = req.originalUrl.substring(8, req.originalUrl.length);
-    image = decodeURIComponent(image);
-    console.log(image);
-    cloudstorage.createSignedUrl(image, "GET", 50, function(err, url) {
-        if (err) {
-            //throw err;
-            err.status = 404;
-            err.message = "Image not found";
-            return next(err);
-        }
-        console.log("ERR: ");
-        console.log(err)
-        console.log("URL")
-        console.log(url)
+  var image = req.originalUrl.substring(8, req.originalUrl.length);
+  image = decodeURIComponent(image);
+  console.log(image);
+  cloudstorage.createSignedUrl(image, "GET", 50, function(err, url) {
+    if (err) {
+      //throw err;
+      err.status = 404;
+      err.message = "Image not found";
+      return next(err);
+    }
+    console.log("ERR: ");
+    console.log(err)
+    console.log("URL")
+    console.log(url)
 
-        res.redirect(url);
-    }); /* Cloud storage signed url callback*/
+    res.redirect(url);
+  }); /* Cloud storage signed url callback*/
 });
 
 
@@ -233,60 +233,60 @@ app.get('/images/*', function(req, res, next) {
  **/
 app.get('/snippets/*', function(req, res, next) {
 
-    console.log(req.originalUrl)
+  console.log(req.originalUrl)
 
-    var mimeTypes = {
-        "mp3": "audio/mpeg",
-        "ogg": "audio/ogg"
-    };
+  var mimeTypes = {
+    "mp3": "audio/mpeg",
+    "ogg": "audio/ogg"
+  };
 
 
 
-    var snippet = req.originalUrl.substring(10, req.originalUrl.length);
+  var snippet = req.originalUrl.substring(10, req.originalUrl.length);
 
-    cloudstorage.createSignedUrl(snippet, "GET", 20, function(err, url) {
-        if (err) {
-            //throw err;
-            err.status = 404;
-            err.message = "Image not found";
-            return next(err);
-        }
-        console.log("ERR: ");
-        console.log(err)
-        console.log("URL")
-        console.log(url)
+  cloudstorage.createSignedUrl(snippet, "GET", 20, function(err, url) {
+    if (err) {
+      //throw err;
+      err.status = 404;
+      err.message = "Image not found";
+      return next(err);
+    }
+    console.log("ERR: ");
+    console.log(err)
+    console.log("URL")
+    console.log(url)
 
-        res.redirect(url);
-    }); /* Cloud storage signed url callback*/
+    res.redirect(url);
+  }); /* Cloud storage signed url callback*/
 });
 
 
 app.get('/waveforms/*', function(req, res) {
 
-    console.log(req.originalUrl)
+  console.log(req.originalUrl)
 
-    var mimeTypes = {
-        "json": "application/javascript"
-    };
+  var mimeTypes = {
+    "json": "application/javascript"
+  };
 
-    var json = req.originalUrl.substring(11, req.originalUrl.length);
-    console.log("TRY TO FETCH ");
-    console.log(json)
-    console.log("-----")
-    cloudstorage.createSignedUrl(json, "GET", 20, function(err, url) {
-        if (err) {
-            //throw err;
-            err.status = 404;
-            err.message = "Image not found";
-            return next(err);
-        }
-        console.log("ERR: ");
-        console.log(err)
-        console.log("URL")
-        console.log(url)
+  var json = req.originalUrl.substring(11, req.originalUrl.length);
+  console.log("TRY TO FETCH ");
+  console.log(json)
+  console.log("-----")
+  cloudstorage.createSignedUrl(json, "GET", 20, function(err, url) {
+    if (err) {
+      //throw err;
+      err.status = 404;
+      err.message = "Image not found";
+      return next(err);
+    }
+    console.log("ERR: ");
+    console.log(err)
+    console.log("URL")
+    console.log(url)
 
-        res.redirect(url);
-    }); /* Cloud storage signed url callback*/
+    res.redirect(url);
+  }); /* Cloud storage signed url callback*/
 });
 
 
@@ -312,28 +312,28 @@ stripePayment.controller(app);
 
 if (app.get('env') === 'development') {
 
-    app.use(function(err, req, res, next) {
-        console.log(err);
-        res.status(err.status || 500);
-        res.json({
-            status: err.status,
-            message: err.message,
-            validation: err.validation,
-            error: err
-        });
+  app.use(function(err, req, res, next) {
+    console.log(err);
+    res.status(err.status || 500);
+    res.json({
+      status: err.status,
+      message: err.message,
+      validation: err.validation,
+      error: err
     });
+  });
 
 } else {
 
-    app.use(function(err, req, res, next) {
-        res.status(err.status || 500);
-        res.json({
-            status: "ERROR",
-            message: err.message,
-            validation: err.validation,
-            error: {}
-        });
+  app.use(function(err, req, res, next) {
+    res.status(err.status || 500);
+    res.json({
+      status: "ERROR",
+      message: err.message,
+      validation: err.validation,
+      error: {}
     });
+  });
 
 }
 
@@ -341,5 +341,5 @@ if (app.get('env') === 'development') {
  * Start the server
  */
 server.listen(app.get('port'), app.get('host'), function() {
-    console.log('Express server listening on port ' + app.get('port'));
+  console.log('Express server listening on port ' + app.get('port'));
 });

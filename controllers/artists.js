@@ -5,7 +5,7 @@ var fs = require('fs-extra');
 var fileUtils = rootRequire('utils/file-utils');
 var authenticationUtils = rootRequire('utils/authentication-utils');
 var model = rootRequire('models/model');
-var cloudstorage = rootRequire('libs/cloudstorage/cloudstorage');
+var cloudstorage = rootRequire('libs/cdn/cloudstorage');
 var AVATAR_DEFAULT = 'img/default/avatar.gif';
 
 module.exports.controller = function(app) {

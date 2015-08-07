@@ -230,44 +230,9 @@ module.exports.controller = function(app) {
       if (label) {
         label.getUsers({
           attributes: ['displayName']
-        }).then(function(associatedUsers) {
+        }).success(function(associatedUsers) {
           label.dataValues.labelManagers = (associatedUsers);
           res.send(label);
-        })
-      } else {
-        var err = new Error();
-        err.status = 404;
-        err.message = "Requested label does not exist";
-        return next(err);
-      }
-    });
-  });
-  /**
-   * GET /labels/:id/companies
-   * Return all the companies the label with id = :id belongs to.
-   */
-  app.get('/labels/:labelId/companies', authenticationUtils.ensureAuthenticated, function(req, res, next) {
-    req.checkParams('labelId', 'Invalid search string').notEmpty().isInt();
-    var errors = req.validationErrors();
-    if (errors) {
-      var err = new Error();
-      err.status = 400;
-      err.message = 'There have been validation errors';
-      err.validation = errors;
-      return next(err);
-    }
-    var LabelId = req.params.labelId;
-    model.Label.find({
-      where: {
-        id: LabelId
-      }
-    }).then(function(label) {
-      if (label) {
-        label.getCompanies({
-          attributes: ['displayName', 'id']
-        }).then(function(associatedCompany) {
-
-          res.send(associatedCompany);
         })
       } else {
         var err = new Error();
@@ -304,19 +269,19 @@ module.exports.controller = function(app) {
       where: {
         displayName: labelName
       }
-    }).then(function(label) {
+    }).success(function(label) {
       if (!label) {
         model.Label.create({
           displayName: labelName
-        }).then(function(label) {
+        }).success(function(label) {
           model.Company.find({
             where: {
               id: companyId
             }
           }).then(function(company) {
-            company.addLabels([label]).then(function(labels) {
+            company.addLabels([label]).success(function(labels) {
               //model.User.find({where: {id: req.user}}).then(function(user) {
-              //label.addUsers([user]).then(function(user) { 
+              //label.addUsers([user]).success(function(user) { 
               res.send();
               //});
               //});                           
@@ -406,7 +371,7 @@ module.exports.controller = function(app) {
           // file exists .. Update file? 
           file.path = req.uploadedFile[0].filename;
           file.size = req.uploadedFile[0].filesize;
-          file.save().then(function() {
+          file.save().success(function() {
             res.send();
           })
         } else {
@@ -415,7 +380,7 @@ module.exports.controller = function(app) {
             extension: req.uploadedFile[0].extension,
             size: req.uploadedFile[0].filesize,
             path: req.uploadedFile[0].filename,
-          }).then(function(dropZoneFile) {
+          }).success(function(dropZoneFile) {
             model.Label.find({
               where: {
                 id: idLabel
@@ -482,7 +447,7 @@ module.exports.controller = function(app) {
               status: "UPLOADING",
               size: size,
               path: remotePath
-            }).then(function(dropZoneFile) {
+            }).success(function(dropZoneFile) {
               model.Label.find({
                 where: {
                   id: labelId
@@ -491,18 +456,45 @@ module.exports.controller = function(app) {
                 label.addDropZoneFiles(dropZoneFile).then(function(associationFile) {
                   if (associationFile) {
                     var expiration = new Date(Date.now() + 60 * 1000);
+
                     cloudstorage.getSignedPolicy(remotePath, {
-                        expiration: expiration.getTime(),
+                        expiration: Date.now() + 60 * 1000,
+                        //successRedirect: "https://localhost:9000",
                         startsWith: ["$key", "dropZone"],
+                        successStatus: '201',
                         contentLengthRange: {
                           min: 0,
                           max: 104857600
                         }
                       },
-                      function(err, body) {
-                        console.log(body);
-                        res.json(body);
+                      function(err, policy) {
+                        console.log(policy.string);
+                        res.json({
+                          Expires: expiration.toISOString(),
+                          action: cloudstorage.getBucketUrl(),
+                          method: 'POST',
+                          key: remotePath,
+                          GoogleAccessId: cloudstorage.getGoogleAccessEmail(),
+                          policy: policy.base64,
+                          signature: policy.signature
+                        });
                       });
+                    /*
+                    var policy = cloudstorage.createSignedPolicy(remotePath, expiration, 104857600, "Any Content type");
+                    res.json({
+                        Expires: expiration.toISOString(),
+                        action: cloudstorage.getBucketUrl(),
+                        method: 'POST',
+                        key: remotePath,
+                        GoogleAccessId: cloudstorage.getGoogleAccessEmail(),
+                        policy: policy.policy,
+                        signature: policy.signature
+                    });
+                    */
+                  } else {
+                    var err = new Error();
+                    err.status = 500;
+                    err.message = "Failed assigning file to label";
                   }
                 });
               });
@@ -513,20 +505,43 @@ module.exports.controller = function(app) {
             file.status = "UPLOADING";
             file.size = size;
             file.path = remotePath;
-            file.save().then(function() {
-              var expiration = new Date(Date.now() + 60 * 1000);
+            file.save().success(function() {
+              var expiration = new Date(Date.now() + 20 * 1000);
               cloudstorage.getSignedPolicy(remotePath, {
-                  expiration: expiration.getTime(),
+                  expiration: Date.now() + 60 * 1000,
+                  //successRedirect: "https://localhost:9000",
                   startsWith: ["$key", "dropZone"],
+                  successStatus: '201',
                   contentLengthRange: {
                     min: 0,
                     max: 104857600
                   }
                 },
-                function(err, body) {
-                  console.log(body);
-                  res.json(body);
+                function(err, policy) {
+                  console.log(policy.string);
+                  res.json({
+                    Expires: expiration.toISOString(),
+                    action: cloudstorage.getBucketUrl(),
+                    method: 'POST',
+                    key: remotePath,
+                    GoogleAccessId: cloudstorage.getGoogleAccessEmail(),
+                    policy: policy.base64,
+                    signature: policy.signature
+                  });
                 });
+              /*
+              var policy = cloudstorage.createSignedPolicy(remotePath, expiration, 104857600, "Any Content type");
+              res.json({
+                  Expires: expiration.toISOString(),
+                  action: cloudstorage.getBucketUrl(),
+                  method: 'POST',
+                  key: remotePath,
+                  GoogleAccessId: cloudstorage.getGoogleAccessEmail(),
+                  policy: policy.policy,
+                  signature: policy.signature
+              });
+              res.send();
+              */
             }).error(function(err) {
               err.status = 500;
               err.message = "File upload failed";
@@ -582,7 +597,7 @@ module.exports.controller = function(app) {
             var file = files[0];
             file.status = "UPLOADED"
               // TODO get metadata and fill other fields?
-            file.save().then(function() {
+            file.save().success(function() {
               res.send();
             }).error(function(err) {
               err.status = 500;
@@ -712,7 +727,6 @@ module.exports.controller = function(app) {
         id: idLabel
       }
     }).then(function(label) {
-      console.log("FOUND LABEL");
       if (!label) {
         var err = new Error();
         err.status = 404;
@@ -724,14 +738,12 @@ module.exports.controller = function(app) {
           extension: "xml"
         }
       }).then(function(xmls) {
-        console.log("XML parsing")
         beatport.process(xmls, idLabel).then(function(results) {
           console.log("--server response")
           results.forEach(function(result) {
-            console.log("FOR EACH RESULT ")
-            console.log(result)
-              // TODO REDUNDANT SAVE JSON AND SEND RABBIT 
-              // 
+
+            // TODO REDUNDANT SAVE JSON AND SEND RABBIT 
+            // 
             model.Release.find({
               where: {
                 id: result.value.dataValues.id
@@ -880,7 +892,7 @@ module.exports.controller = function(app) {
           err.message = "Requested user does not exist";
           return next(err);
         }
-        label.removeUser(user).then(function() {
+        label.removeUser(user).success(function() {
           res.send();
         })
       })
@@ -914,7 +926,7 @@ module.exports.controller = function(app) {
           where: {
             status: "UPLOADED"
           }
-        }).then(function(dropZoneFiles) {
+        }).success(function(dropZoneFiles) {
           res.send(dropZoneFiles);
         })
       } else {
@@ -952,7 +964,7 @@ module.exports.controller = function(app) {
       if (label) {
         label.getReleases({
           order: 'catalogNumber DESC'
-        }).then(function(releases) {
+        }).success(function(releases) {
           res.send(releases);
         })
       } else {
