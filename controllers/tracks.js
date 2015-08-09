@@ -1,9 +1,5 @@
 'use strict';
 
-var fs = require('fs-extra');
-
-var fileUtils = rootRequire('utils/file-utils');
-var authenticationUtils = rootRequire('utils/authentication-utils');
 var model = rootRequire('models/model');
 var cloudstorage = rootRequire('libs/cdn/cloudstorage');
 
@@ -44,7 +40,7 @@ module.exports.controller = function(app) {
       }
     }).then(function(track) {
       if (track[property]) {
-        cloudstorage.createSignedUrl(track[property], "GET", 20, callback);
+        cloudstorage.createSignedUrl(track[property], 'GET', 20, callback);
       } else {
         callback(new Error('Track property does not exist'));
       }
@@ -62,7 +58,7 @@ module.exports.controller = function(app) {
       if (err) {
         //throw err;
         err.status = 404;
-        err.message = "Snippet not found";
+        err.message = 'Snippet not found';
         return next(err);
       }
       res.redirect(url);
@@ -80,7 +76,7 @@ module.exports.controller = function(app) {
       if (err) {
         //throw err;
         err.status = 404;
-        err.message = "Ogg snippet not found";
+        err.message = 'Ogg snippet not found';
         return next(err);
       }
       res.redirect(url);
@@ -98,7 +94,7 @@ module.exports.controller = function(app) {
       if (err) {
         //throw err;
         err.status = 404;
-        err.message = "Waveform file not found";
+        err.message = 'Waveform file not found';
         return next(err);
       }
       res.redirect(url);
@@ -117,7 +113,7 @@ module.exports.controller = function(app) {
       if (err) {
         //throw err;
         err.status = 404;
-        err.message = "Lossless file not found";
+        err.message = 'Lossless file not found';
         return next(err);
       }
       res.redirect(url);
@@ -136,11 +132,11 @@ module.exports.controller = function(app) {
       if (err) {
         //throw err;
         err.status = 404;
-        err.message = "Mp3 file not found";
+        err.message = 'Mp3 file not found';
         return next(err);
       }
       res.redirect(url);
     });
   });
 
-} /* End of tracks controller */
+}; /* End of tracks controller */
