@@ -29,7 +29,8 @@
     "sequelize-cli": "~1.0.4",
     "stripe": "^3.3.4",
     "xml-stream": "~0.4.5",
-    "xml2js": "^0.4.4"
+    "xml2js": "^0.4.4",
+    "sendgrid": "~1.9.2"
   },
   "devDependencies": {
     "async": "^0.9.0",

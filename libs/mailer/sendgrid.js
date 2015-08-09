@@ -1,9 +1,11 @@
 'use strict';
 
 var config = rootRequire('config/config');
-var sendgrid = require("sendgrid")(
-  config.SENDGRID_USER, 
-  config.SENDGRID_API_KEY);
+
+console.log(config.SENDGRID_USER);
+console.log(config.SENDGRID_API_KEY);
+
+var sendgrid = require('sendgrid')(config.SENDGRID_API_KEY);
 
 /**
  * Send an email.
@@ -15,14 +17,15 @@ var sendgrid = require("sendgrid")(
  * @param {string=} email.text - Text of the email.
  * @param {string=} email.html - Html content of the email.
  * @param {string=} email.template - Template id.
+ * @param {function} callback - The callback function.
  */
-function sendEmail(email) {
-  var sgEmail = new sendgrid.Email(jsonEmail);
+function sendEmail(email, callback) {
+  var sgEmail = new sendgrid.Email(email);
   if (email.template) {
     sgEmail.addFilter('templates', 'enable', 1);
-    sgEmail.addFilter('templates', 'template_id', template);
+    sgEmail.addFilter('templates', 'template_id', email.template);
   }
-  sendgrid.send(email);
+  sendgrid.send(email, callback);
 }
 
 exports.sendEmail = sendEmail;
