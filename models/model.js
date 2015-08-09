@@ -1,547 +1,534 @@
+'use strict';
+
 var Sequelize = require('sequelize');
 var bcrypt = require('bcryptjs');
 
 var config = rootRequire('config/config');
 
-var sequelizeObject = new Sequelize(config.MYSQL_DATABASE, config.MYSQL_USER, config.MYSQL_PASSWORD, {
+var sequelizeObject = new Sequelize(
+  config.MYSQL_DATABASE,
+  config.MYSQL_USER, config.MYSQL_PASSWORD, {
     host: config.MYSQL_HOST,
     logging: false,
     dialect: 'mysql'
-});
+  });
 
 exports.Sequelize = Sequelize;
 
 exports.sequelize = function() {
-    return sequelizeObject;
+  return sequelizeObject;
 };
 
-/*
- INITIALIZE ALL THE MODELS
+/** 
+ * Model: User
  */
-
-/* 
-  Model: User
-
-*/
-
 var User = sequelizeObject.define('User', {
-    id: {
-        type: Sequelize.INTEGER,
-        autoIncrement: true,
-        primaryKey: true
-    },
-    email: Sequelize.STRING,
-    avatar: Sequelize.STRING,
-    fullSizeAvatar: Sequelize.STRING,
-    password: Sequelize.STRING,
-    displayName: Sequelize.STRING,
-    facebook: Sequelize.STRING,
-    foursquare: Sequelize.STRING,
-    google: Sequelize.STRING,
-    github: Sequelize.STRING,
-    linkedin: Sequelize.STRING,
-    live: Sequelize.STRING,
-    yahoo: Sequelize.STRING,
-    twitter: Sequelize.STRING,
-    isAdmin: {
-        type: Sequelize.BOOLEAN,
-        allowNull: false,
-        defaultValue: false
-    },
-    isActive: {
-        type: Sequelize.BOOLEAN,
-        allowNull: false,
-        defaultValue: true
-    } // TODO Set to FALSE and ask for email confirmation.
+  id: {
+    type: Sequelize.INTEGER,
+    autoIncrement: true,
+    primaryKey: true
+  },
+  email: Sequelize.STRING,
+  avatar: Sequelize.STRING,
+  fullSizeAvatar: Sequelize.STRING,
+  password: Sequelize.STRING,
+  displayName: Sequelize.STRING,
+  facebook: Sequelize.STRING,
+  foursquare: Sequelize.STRING,
+  google: Sequelize.STRING,
+  github: Sequelize.STRING,
+  linkedin: Sequelize.STRING,
+  live: Sequelize.STRING,
+  yahoo: Sequelize.STRING,
+  twitter: Sequelize.STRING,
+  isAdmin: {
+    type: Sequelize.BOOLEAN,
+    allowNull: false,
+    defaultValue: false
+  },
+  isActive: {
+    type: Sequelize.BOOLEAN,
+    allowNull: false,
+    defaultValue: true
+  } // TODO Set to FALSE and ask for email confirmation.
 }, {
-    instanceMethods: {
-        comparePassword: function(password) {
-            return bcrypt.compareSync(password, this.password)
-        }
+  instanceMethods: {
+    comparePassword: function(password) {
+      return bcrypt.compareSync(password, this.password);
     }
+  }
 });
 
-User.hook('beforeValidate', function(user, fn) {
-    if (!user.avatar) {
-        user.avatar = "default.png"
-    }
-    var salt = bcrypt.genSaltSync(10);
-    user.password = bcrypt.hashSync(user.password, salt);
-    return sequelizeObject.Promise.resolve(user)
-})
+User.hook('beforeValidate', function(user) {
+  if (!user.avatar) {
+    user.avatar = 'default.png';
+  }
+  var salt = bcrypt.genSaltSync(10);
+  user.password = bcrypt.hashSync(user.password, salt);
+  return sequelizeObject.Promise.resolve(user);
+});
 
 exports.User = User;
 
-
-
-/* 
-  Model: Comapany
-*/
-
+/** 
+ * Model: Comapany
+ */
 var Company = sequelizeObject.define('Company', {
-    id: {
-        type: Sequelize.INTEGER,
-        autoIncrement: true,
-        primaryKey: true
-    },
-    displayName: Sequelize.STRING,
-    isActive: {
-        type: Sequelize.BOOLEAN,
-        allowNull: false,
-        defaultValue: true
-    },
-    logo: Sequelize.STRING
+  id: {
+    type: Sequelize.INTEGER,
+    autoIncrement: true,
+    primaryKey: true
+  },
+  displayName: Sequelize.STRING,
+  isActive: {
+    type: Sequelize.BOOLEAN,
+    allowNull: false,
+    defaultValue: true
+  },
+  logo: Sequelize.STRING
 });
+
 exports.Company = Company;
 
-/* 
-  Model: Label
-*/
-
+/**
+ * Model: Label
+ */
 var Label = sequelizeObject.define('Label', {
-    id: {
-        type: Sequelize.INTEGER,
-        autoIncrement: true,
-        primaryKey: true
-    },
-    displayName: Sequelize.STRING,
-    isActive: {
-        type: Sequelize.BOOLEAN,
-        allowNull: false,
-        defaultValue: true
-    },
-    logo: Sequelize.STRING,
-    fullSizeLogo: Sequelize.STRING
+  id: {
+    type: Sequelize.INTEGER,
+    autoIncrement: true,
+    primaryKey: true
+  },
+  displayName: Sequelize.STRING,
+  isActive: {
+    type: Sequelize.BOOLEAN,
+    allowNull: false,
+    defaultValue: true
+  },
+  logo: Sequelize.STRING,
+  fullSizeLogo: Sequelize.STRING
 });
+
 exports.Label = Label;
 
-/* 
-  Model: DropZoneFile
-*/
-
+/** 
+ * Model: DropZoneFile
+ */
 var DropZoneFile = sequelizeObject.define('DropZoneFile', {
-    id: {
-        type: Sequelize.INTEGER,
-        autoIncrement: true,
-        primaryKey: true
-    },
-    fileName: Sequelize.STRING,
-    extension: Sequelize.STRING,
-    status: Sequelize.STRING,
-    md5: Sequelize.STRING,
-    path: Sequelize.STRING,
-    size: Sequelize.BIGINT
+  id: {
+    type: Sequelize.INTEGER,
+    autoIncrement: true,
+    primaryKey: true
+  },
+  fileName: Sequelize.STRING,
+  extension: Sequelize.STRING,
+  status: Sequelize.STRING,
+  md5: Sequelize.STRING,
+  path: Sequelize.STRING,
+  size: Sequelize.BIGINT
 });
-
-
 
 exports.DropZoneFile = DropZoneFile;
-/* 
-  Artist
-*/
 
+/** 
+ * Model: Artist
+ */
 var Artist = sequelizeObject.define('Artist', {
-    id: {
-        type: Sequelize.INTEGER,
-        autoIncrement: true,
-        primaryKey: true
-    },
-    displayName: Sequelize.STRING,
-    avatar: Sequelize.STRING,
-    fullSizeAvatar: Sequelize.STRING,
+  id: {
+    type: Sequelize.INTEGER,
+    autoIncrement: true,
+    primaryKey: true
+  },
+  displayName: Sequelize.STRING,
+  avatar: Sequelize.STRING,
+  fullSizeAvatar: Sequelize.STRING,
 });
+
 exports.Artist = Artist;
 
 /* 
-  Release
-*/
-
-/**
- * Status that a release may have
- **/
+ * Model: Release
+ */
 exports.ReleaseStatus = {
-    INCOMPLETE: 'INCOMPLETE',
-    TO_BE_PROCESSED: 'TO_BE_PROCESSED',
-    PROCESSED: 'PROCESSED',
-    PROCESSING_FAILED: 'PROCESSING_FAILED'
-}
+  INCOMPLETE: 'INCOMPLETE',
+  TO_BE_PROCESSED: 'TO_BE_PROCESSED',
+  PROCESSED: 'PROCESSED',
+  PROCESSING_FAILED: 'PROCESSING_FAILED'
+};
 
 var Release = sequelizeObject.define('Release', {
-    id: {
-        type: Sequelize.INTEGER,
-        autoIncrement: true,
-        primaryKey: true
-    },
-    title: Sequelize.STRING,
-    releaseDate: Sequelize.DATE,
-    isActive: {
-        type: Sequelize.BOOLEAN,
-        allowNull: false,
-        defaultValue: true
-    },
-    cover: Sequelize.STRING,
-    catalogNumber: Sequelize.STRING,
-    UPC: Sequelize.STRING,
-    GRid: Sequelize.STRING,
-    description: Sequelize.STRING,
-    status: {
-        type: Sequelize.ENUM(
-            exports.ReleaseStatus.INCOMPLETE,
-            exports.ReleaseStatus.TO_BE_PROCESSED,
-            exports.ReleaseStatus.PROCESSED,
-            exports.ReleaseStatus.PROCESSING_FAILED),
-        defaultValue: exports.ReleaseStatus.TO_BE_PROCESSED,
-        allowNull: false
-    },
-    status: Sequelize.STRING,
-    json: Sequelize.STRING,
-    metadataFile: Sequelize.STRING,
-    type: Sequelize.ENUM('release', 'album', 'compilation')
+  id: {
+    type: Sequelize.INTEGER,
+    autoIncrement: true,
+    primaryKey: true
+  },
+  title: Sequelize.STRING,
+  releaseDate: Sequelize.DATE,
+  isActive: {
+    type: Sequelize.BOOLEAN,
+    allowNull: false,
+    defaultValue: true
+  },
+  cover: Sequelize.STRING,
+  catalogNumber: Sequelize.STRING,
+  UPC: Sequelize.STRING,
+  GRid: Sequelize.STRING,
+  description: Sequelize.STRING,
+  status: {
+    type: Sequelize.ENUM(
+      exports.ReleaseStatus.INCOMPLETE,
+      exports.ReleaseStatus.TO_BE_PROCESSED,
+      exports.ReleaseStatus.PROCESSED,
+      exports.ReleaseStatus.PROCESSING_FAILED),
+    defaultValue: exports.ReleaseStatus.TO_BE_PROCESSED,
+    allowNull: false
+  },
+  //status: Sequelize.STRING,
+  json: Sequelize.STRING,
+  metadataFile: Sequelize.STRING,
+  type: Sequelize.ENUM('release', 'album', 'compilation')
 });
 
 exports.Release = Release;
 
-/* Genre */
-
+/**
+ * Model: Genre
+ */
 var Genre = sequelizeObject.define('Genre', {
-    id: {
-        type: Sequelize.INTEGER,
-        autoIncrement: true,
-        primaryKey: true
-    },
-    name: Sequelize.STRING
+  id: {
+    type: Sequelize.INTEGER,
+    autoIncrement: true,
+    primaryKey: true
+  },
+  name: Sequelize.STRING
 });
+
 exports.Genre = Genre;
 
-/* Tracks */
-
 /**
- * Status that a track may have
- **/
+ * Model: Tracks
+ */
 exports.TrackStatus = {
-    INCOMPLETE: 'INCOMPLETE',
-    TO_BE_PROCESSED: 'TO_BE_PROCESSED',
-    PROCESSED: 'PROCESSED',
-    PROCESSING_FAILED: 'PROCESSING_FAILED'
-}
+  INCOMPLETE: 'INCOMPLETE',
+  TO_BE_PROCESSED: 'TO_BE_PROCESSED',
+  PROCESSED: 'PROCESSED',
+  PROCESSING_FAILED: 'PROCESSING_FAILED'
+};
 
 var Track = sequelizeObject.define('Track', {
-    id: {
-        type: Sequelize.INTEGER,
-        autoIncrement: true,
-        primaryKey: true
-    },
-    title: Sequelize.STRING,
-    version: Sequelize.STRING,
-    cover: Sequelize.STRING,
-    path: Sequelize.STRING,
-    mp3Path: Sequelize.STRING,
-    snippetPath: Sequelize.STRING,
-    oggSnippetPath: Sequelize.STRING,
-    waveform: Sequelize.TEXT,
-    bpm: Sequelize.FLOAT,
-    lengthInSeconds: Sequelize.INTEGER,
-    isActive: {
-        type: Sequelize.BOOLEAN,
-        allowNull: false,
-        defaultValue: true
-    },
-    status: {
-        type: Sequelize.ENUM(
-            exports.ReleaseStatus.INCOMPLETE,
-            exports.ReleaseStatus.TO_BE_PROCESSED,
-            exports.ReleaseStatus.PROCESSED,
-            exports.ReleaseStatus.PROCESSING_FAILED),
-        defaultValue: exports.ReleaseStatus.TO_BE_PROCESSED,
-        allowNull: false
-    },
-    errorMessage: Sequelize.STRING
+  id: {
+    type: Sequelize.INTEGER,
+    autoIncrement: true,
+    primaryKey: true
+  },
+  title: Sequelize.STRING,
+  version: Sequelize.STRING,
+  cover: Sequelize.STRING,
+  path: Sequelize.STRING,
+  mp3Path: Sequelize.STRING,
+  snippetPath: Sequelize.STRING,
+  oggSnippetPath: Sequelize.STRING,
+  waveform: Sequelize.TEXT,
+  bpm: Sequelize.FLOAT,
+  lengthInSeconds: Sequelize.INTEGER,
+  isActive: {
+    type: Sequelize.BOOLEAN,
+    allowNull: false,
+    defaultValue: true
+  },
+  status: {
+    type: Sequelize.ENUM(
+      exports.ReleaseStatus.INCOMPLETE,
+      exports.ReleaseStatus.TO_BE_PROCESSED,
+      exports.ReleaseStatus.PROCESSED,
+      exports.ReleaseStatus.PROCESSING_FAILED),
+    defaultValue: exports.ReleaseStatus.TO_BE_PROCESSED,
+    allowNull: false
+  },
+  errorMessage: Sequelize.STRING
 });
+
 exports.Track = Track;
 
 /**
- * CartItem
- **/
-
+ * Model: CartItem
+ */
 var CartItem = sequelizeObject.define('CartItem', {
-    id: {
-        type: Sequelize.INTEGER,
-        autoIncrement: true,
-        primaryKey: true
-    },
-    transactionStarted: Sequelize.BOOLEAN
+  id: {
+    type: Sequelize.INTEGER,
+    autoIncrement: true,
+    primaryKey: true
+  },
+  transactionStarted: Sequelize.BOOLEAN
 });
 
 exports.CartItem = CartItem;
 
 User.hasMany(CartItem, {
-    foreignKey: {
-        name: 'UserId',
-        allowNull: false
-    },
-    onDelete: 'CASCADE'
-
+  foreignKey: {
+    name: 'UserId',
+    allowNull: false
+  },
+  onDelete: 'CASCADE'
 });
 
 CartItem.belongsTo(User, {
-    foreignKey: {
-        name: 'UserId',
-        allowNull: false
-    },
-    onDelete: 'CASCADE'
+  foreignKey: {
+    name: 'UserId',
+    allowNull: false
+  },
+  onDelete: 'CASCADE'
 });
 
 CartItem.belongsTo(Track, {
-    foreignKey: {
-        name: 'TrackId',
-        allowNull: true
-    },
-    onDelete: 'CASCADE'
+  foreignKey: {
+    name: 'TrackId',
+    allowNull: true
+  },
+  onDelete: 'CASCADE'
 });
 
 CartItem.belongsTo(Release, {
-    foreignKey: {
-        name: 'ReleaseId',
-        allowNull: true
-    },
-    onDelete: 'CASCADE'
+  foreignKey: {
+    name: 'ReleaseId',
+    allowNull: true
+  },
+  onDelete: 'CASCADE'
 });
 
 /**
- * Library
- **/
-
+ * Model: Library
+ */
 var LibraryItem = sequelizeObject.define('LibraryItem', {
-    id: {
-        type: Sequelize.INTEGER,
-        autoIncrement: true,
-        primaryKey: true
-    }
+  id: {
+    type: Sequelize.INTEGER,
+    autoIncrement: true,
+    primaryKey: true
+  }
 });
 
 exports.LibraryItem = LibraryItem;
 
 Track.belongsToMany(User, {
-    through: LibraryItem,
-    foreignKey: {
-        name: 'TrackId',
-        allowNull: false
-    }
+  through: LibraryItem,
+  foreignKey: {
+    name: 'TrackId',
+    allowNull: false
+  }
 });
 
 User.belongsToMany(Track, {
-    through: LibraryItem,
-    foreignKey: {
-        name: 'UserId',
-        allowNull: false
-    }
+  through: LibraryItem,
+  foreignKey: {
+    name: 'UserId',
+    allowNull: false
+  }
 });
 
 /**
- * Master Price
- **/
-
+ * Model: Master Price
+ */
 var MasterPrice = sequelizeObject.define('MasterPrice', {
-    price: {
-        type: Sequelize.DECIMAL(10, 2),
-        autoIncrement: false,
-        primaryKey: true
-    }
+  price: {
+    type: Sequelize.DECIMAL(10, 2),
+    autoIncrement: false,
+    primaryKey: true
+  }
 });
+
+exports.MasterPrice = MasterPrice;
 
 /**
- * Currency
- **/
-
+ * Model: Currency
+ */
 var Currency = sequelizeObject.define('Currency', {
-    id: {
-        type: Sequelize.INTEGER,
-        autoIncrement: true,
-        primaryKey: true
-    },
-    name: Sequelize.STRING,
-    shortname: Sequelize.STRING(32),
-    symbol: Sequelize.STRING(4) //,
+  id: {
+    type: Sequelize.INTEGER,
+    autoIncrement: true,
+    primaryKey: true
+  },
+  name: Sequelize.STRING,
+  shortname: Sequelize.STRING(32),
+  symbol: Sequelize.STRING(4) //,
 });
+
 exports.Currency = Currency;
 
 /**
- * Internationalization
- **/
-
+ * Model: Internationalization
+ */
 var Internationalization = sequelizeObject.define('Internationalization', {
-    country: {
-        type: Sequelize.STRING(2),
-        primaryKey: true
-    }
+  country: {
+    type: Sequelize.STRING(2),
+    primaryKey: true
+  }
 });
+
 exports.Internationalization = Internationalization;
 
 Internationalization.belongsTo(Currency, {
-    foreignKey: {
-        name: 'LocalCurrency',
-        allowNull: false
-    },
-    onDelete: 'RESTRICT',
-    onUpdate: 'CASCADE'
+  foreignKey: {
+    name: 'LocalCurrency',
+    allowNull: false
+  },
+  onDelete: 'RESTRICT',
+  onUpdate: 'CASCADE'
 });
 
 /**
- * Converted Price
- **/
-
+ * Model: Converted Price
+ */
 var ConvertedPrice = sequelizeObject.define('ConvertedPrice', {
-    price: Sequelize.DECIMAL(10, 2)
+  price: Sequelize.DECIMAL(10, 2)
 });
 
 Currency.belongsToMany(MasterPrice, {
-    through: ConvertedPrice,
-    foreignKey: {
-        name: 'CurrencyId',
-        allowNull: false
-    },
-    onDelete: 'CASCADE'
+  through: ConvertedPrice,
+  foreignKey: {
+    name: 'CurrencyId',
+    allowNull: false
+  },
+  onDelete: 'CASCADE'
 });
 
 exports.ConvertedPrice = ConvertedPrice;
+
 Currency.hasMany(ConvertedPrice);
 
 MasterPrice.belongsToMany(Currency, {
-    through: ConvertedPrice,
-    foreignKey: {
-        name: 'MasterPrice',
-        allowNull: false
-    },
-    onDelete: 'CASCADE'
+  through: ConvertedPrice,
+  foreignKey: {
+    name: 'MasterPrice',
+    allowNull: false
+  },
+  onDelete: 'CASCADE'
 });
-exports.MasterPrice = MasterPrice;
+
 exports.ConvertedPrice = ConvertedPrice;
 
 /**
  * Track and Release prices
- **/
-
+ */
 Track.belongsTo(MasterPrice, {
-    foreignKey: {
-        name: 'Price',
-        allowNull: false,
-        defaultValue: 1.0
-    },
-    onDelete: 'CASCADE'
+  foreignKey: {
+    name: 'Price',
+    allowNull: false,
+    defaultValue: 1.0
+  },
+  onDelete: 'CASCADE'
 });
 
 Release.belongsTo(MasterPrice, {
-    foreignKey: {
-        name: 'Price',
-        allowNull: true
-    },
-    onDelete: 'CASCADE'
+  foreignKey: {
+    name: 'Price',
+    allowNull: true
+  },
+  onDelete: 'CASCADE'
 });
 
 /**
  * A user has an associated currency
- **/
+ */
 User.belongsTo(Currency, {
-    foreignKey: {
-        name: 'CurrencyId',
-        allowNull: false
-    },
-    onUpdate: 'CASCADE',
-    onDelete: 'RESTRICT'
+  foreignKey: {
+    name: 'CurrencyId',
+    allowNull: false
+  },
+  onUpdate: 'CASCADE',
+  onDelete: 'RESTRICT'
 });
 
-/* 
-  Many to Many association and tables
-*/
+/** 
+ * Many to Many association and tables
+ */
 
 // User <--> Company
-User.belongsToMany(Company)
-Company.belongsToMany(User)
-// Label <--> Company
-Company.belongsToMany(Label)
-Label.belongsToMany(Company)
-// User <--> Labels
-User.hasMany(Label)
-Label.hasMany(User)
+User.belongsToMany(Company);
+Company.belongsToMany(User);
 
+// Label <--> Company
+Company.belongsToMany(Label);
+Label.belongsToMany(Company);
+
+// User <--> Labels
+User.hasMany(Label);
+Label.hasMany(User);
 
 // Label <--> DropZoneFile
-
-DropZoneFile.belongsToMany(Label)
-Label.belongsToMany(DropZoneFile)
-
+DropZoneFile.belongsToMany(Label);
+Label.belongsToMany(DropZoneFile);
 
 // Label <--> Releases
-Release.belongsToMany(Label)
-Label.belongsToMany(Release)
+Release.belongsToMany(Label);
+Label.belongsToMany(Release);
+
 // Release <--> Tracks 
-ReleaseTracks = sequelizeObject.define('ReleaseTracks', {
-    position: Sequelize.INTEGER
-})
+var ReleaseTracks = sequelizeObject.define('ReleaseTracks', {
+  position: Sequelize.INTEGER
+});
 
 Track.hasMany(Release, {
-    through: ReleaseTracks
-})
+  through: ReleaseTracks
+});
+
 Release.hasMany(Track, {
-    through: ReleaseTracks
-})
+  through: ReleaseTracks
+});
 
-// ARTIST AS PRODCUER of a TRACK     (artist <--> track) 
-ProducerTracks = sequelizeObject.define('ArtistTracks', {})
+// Artist <--> Tracks (Producer)
+var ProducerTracks = sequelizeObject.define('ArtistTracks', {});
 Artist.hasMany(Track, {
-    through: ProducerTracks
-})
+  through: ProducerTracks
+});
 Track.hasMany(Artist, {
-    as: 'Producer',
-    through: ProducerTracks
-})
+  as: 'Producer',
+  through: ProducerTracks
+});
 
-// ARTIST AS REMIXER of a TRACK     (artist <--> track) 
-RemixerTracks = sequelizeObject.define('RemixerTracks', {})
+// Artist <--> Tracks (Remixer)
+var RemixerTracks = sequelizeObject.define('RemixerTracks', {});
 Artist.hasMany(Track, {
-    through: RemixerTracks
-})
+  through: RemixerTracks
+});
 Track.hasMany(Artist, {
-    as: 'Remixer',
-    through: RemixerTracks
-})
+  as: 'Remixer',
+  through: RemixerTracks
+});
 
-//Artist ownership by users
+// User <--> Artists
+User.belongsToMany(Artist);
+Artist.belongsToMany(User);
 
-User.belongsToMany(Artist)
-Artist.belongsToMany(User)
-
-
-// GENRE and track relationship
-Track.belongsToMany(Genre)
-Genre.belongsToMany(Track)
+// Genre <--> Tracks
+Track.belongsToMany(Genre);
+Genre.belongsToMany(Track);
 
 /**
  * Create database and default entities if do not exist
  **/
 /*
 sequelizeObject.sync().then(function() {
-    Currency.find({
-        where: {
-            shortname: 'USD'
-        }
-    }).then(function(currency) {
-        if (!currency) {
-            Currency.create({
-                name: "United States Dollar",
-                shortname: "USD",
-                symbol: "$"
-            }).then(function(currency) {
-                DefaultCurrency = currency;
-                Internationalization.create({
-                    country: "US",
-                    LocalCurrency: currency.id
-                });
-            });
-        } else {
-            DefaultCurrency = currency;
-        }
-    });
+  Currency.find({
+    where: {
+      shortname: 'USD'
+    }
+  }).then(function(currency) {
+    if (!currency) {
+      Currency.create({
+        name: 'United States Dollar',
+        shortname: 'USD',
+        symbol: '$'
+      }).then(function(currency) {
+        DefaultCurrency = currency;
+        Internationalization.create({
+          country: 'US',
+          LocalCurrency: currency.id
+        });
+      });
+    } else {
+      DefaultCurrency = currency;
+    }
+  });
 });
 */
 exports.DefaultCurrency = 'USD';
