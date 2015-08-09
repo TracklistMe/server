@@ -1,19 +1,16 @@
 'use strict';
 
-var fs = require('fs-extra');
-
-var fileUtils = rootRequire('utils/file-utils');
 var authenticationUtils = rootRequire('utils/authentication-utils');
 var model = rootRequire('models/model');
-var cloudstorage = rootRequire('libs/cdn/cloudstorage');
 
 module.exports.controller = function(app) {
 
   /**
-   * GET /artists/searchExact/:searchString
-   * Return the list of labels whose displayName exactly matches the search string
+   * GET /genres/searchExact/:searchString
+   * Return the list of genres whose displayName exactly matches the search 
+   * string
    */
-  app.get('/genres/searchExact/:searchString', function(req, res, next) {
+  app.get('/genres/searchExact/:searchString', function(req, res) {
     var searchString = req.params.searchString;
     model.Genre.find({
       where: {
@@ -24,23 +21,21 @@ module.exports.controller = function(app) {
     });
   });
 
-
   /**
    * GET /genres/
-   * Return list of all the artists
+   * Return list of all the genres
    * TODO: pagination
-   **/
+   */
   app.get('/genres/', function(req, res) {
-
     model.Genre.findAll().then(function(genres) {
       res.send(genres);
     });
   });
 
   /**
-   * GET /artists/:id
-   * Return the artist associated with the specified ID
-   **/
+   * GET /genres/:id
+   * Return the genre associated with the specified id
+   */
   app.get('/genres/:id', function(req, res) {
     var genreId = req.params.id;
     model.Genre.find({
@@ -53,48 +48,51 @@ module.exports.controller = function(app) {
   });
 
   /**
-   * PUT /artists/:id
-   * Update artist information
+   * PUT /genres/:id
+   * Update genre information
    * TODO check passed data
-   **/
-  app.put('/genres/:id', authenticationUtils.ensureAuthenticated, authenticationUtils.ensureAdmin, function(req, res) {
-    var genreId = req.params.id;
-    console.log("Update artist")
-    model.Genre.find({
-      where: {
-        id: genreId
-      }
-    }).then(function(genre) {
-      if (genre) { // if the record exists in the db
-        genre.updateAttributes(req.body).then(function(genre) {
-          res.send();
-        });
-      }
-    })
-  });
+   */
+  app.put('/genres/:id',
+    authenticationUtils.ensureAuthenticated, authenticationUtils.ensureAdmin,
+    function(req, res) {
+      var genreId = req.params.id;
+      console.log('Update artist');
+      model.Genre.find({
+        where: {
+          id: genreId
+        }
+      }).then(function(genre) {
+        if (genre) { // if the record exists in the db
+          genre.updateAttributes(req.body).then(function() {
+            res.send();
+          });
+        }
+      });
+    });
 
   /**
-   * Post /artists/
-   * Create new artist
-   **/
-  app.post('/genres/', authenticationUtils.ensureAuthenticated, authenticationUtils.ensureAdmin, function(req, res) {
-    var genreName = req.body.name;
+   * POST /genres/
+   * Create new genre
+   */
+  app.post('/genres/',
+    authenticationUtils.ensureAuthenticated, authenticationUtils.ensureAdmin,
+    function(req, res) {
+      var genreName = req.body.name;
 
-    model.Genre.find({
-      where: {
-        name: genreName
-      }
-    }).then(function(genre) {
-      if (!genre) {
-        model.Genre.create({
+      model.Genre.find({
+        where: {
           name: genreName
-        }).success(function(newGenre) {
-          genre = newGenre;
-        })
-      }
-      res.send(genre);
+        }
+      }).then(function(genre) {
+        if (!genre) {
+          model.Genre.create({
+            name: genreName
+          }).success(function(newGenre) {
+            genre = newGenre;
+          });
+        }
+        res.send(genre);
+      });
     });
-  });
 
-
-} /* End of artists controller */
+}; /* End of genres controller */
