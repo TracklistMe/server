@@ -6,6 +6,7 @@ var fileUtils = rootRequire('utils/file-utils');
 var authenticationUtils = rootRequire('utils/authentication-utils');
 var model = rootRequire('models/model');
 var cloudstorage = rootRequire('libs/cdn/cloudstorage');
+var helper = rootRequire('helpers/artists');
 var AVATAR_DEFAULT = 'img/default/avatar.gif';
 
 module.exports.controller = function(app) {
@@ -163,28 +164,28 @@ module.exports.controller = function(app) {
     });
 
   /**
-   * POST /artists/:idArtist/profilePicture/:width/:height/
+   * POST /artists/:artistId/profilePicture/:width/:height/
    * Upload artist profile picture to the CDN, original size and resized
    **/
-  app.post('/artists/:idArtist/profilePicture/:width/:height/',
+  app.post('/artists/:artistId/profilePicture/:width/:height/',
     authenticationUtils.ensureAuthenticated,
     fileUtils.uploadFunction(
-      fileUtils.localImagePath,
-      fileUtils.remoteImagePath),
+      helper.localImagePath,
+      helper.remoteImagePath),
     fileUtils.resizeFunction(
-      fileUtils.localImagePath,
-      fileUtils.remoteImagePath),
+      helper.localImagePath,
+      helper.remoteImagePath),
     function(req, res) {
-      var idArtist = req.params.idArtist;
+      var artistId = req.params.artistId;
       model.Artist.find({
         where: {
-          id: idArtist
+          id: artistId
         }
       }).then(function(artist) {
 
         var oldAvatar = artist.avatar;
         artist.avatar =
-          fileUtils.remoteImagePath(req, req.uploadedFile[0].resizedFilename);
+          helper.remoteImagePath(req, req.uploadedFile[0].resizedFilename);
 
         artist.save().then(function() {
           // we remove old avatars from the CDN
@@ -193,11 +194,11 @@ module.exports.controller = function(app) {
           }
           // We remove temporarily stored files
           fs.unlink(
-            fileUtils.localImagePath(
+            helper.localImagePath(
               req,
               req.uploadedFile[0].filename));
           fs.unlink(
-            fileUtils.localImagePath(
+            helper.localImagePath(
               req,
               req.uploadedFile[0].resizedFilename));
 
