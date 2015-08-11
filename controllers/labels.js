@@ -641,7 +641,7 @@ module.exports.controller = function(app) {
       req.checkBody('id', 'DropZoneFile id is invalid').notEmpty().isInt();
 
       var labelId = req.params.labelId;
-      var id = req.body.id;
+      var id = req.params.id;
 
       model.Label.find({
         where: {
@@ -658,14 +658,13 @@ module.exports.controller = function(app) {
               var file = files[0];
               cloudstorage.remove(file.path, function(err) {
                 if (err) {
-                  err.status = 404;
-                  err.message = 'Failed removing file from cloudstorage';
-                  console.log('Failed removing file from cloudstorage');
-                  return next(err);
-                } else {
-                  file.destroy();
-                  res.send();
+                  console.log(
+                    'Failed removing ' +
+                    file.path +
+                    ' from cloudstorage');
                 }
+                file.destroy();
+                res.send();
               });
             } else {
               var err = new Error();
