@@ -147,6 +147,13 @@ function getImageFactory(fieldName, helper) {
               res.redirect(url);
             }); /* Cloud storage signed url callback*/
         } else {
+          // Should never happen
+          if (!entity[fieldName]) {
+            var err = new Error();
+            err.status = 404;
+            err.message = "Image not found";
+            return next(err);
+          }
           var resizedRemotePath =
             helper.resizedPath(
               entity[fieldName],
