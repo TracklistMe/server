@@ -2,13 +2,13 @@
 
 var fs = require('fs-extra');
 
-var fileUtils = rootRequire('utils/file-utils');
+var imagesController = rootRequire('controllers/images');
+var helper = rootRequire('helpers/labels');
 var authenticationUtils = rootRequire('utils/authentication-utils');
 var model = rootRequire('models/model');
 var cloudstorage = rootRequire('libs/cdn/cloudstorage');
 var beatport = rootRequire('libs/beatport/beatport');
 var rabbitmq = rootRequire('rabbitmq/rabbitmq');
-
 
 module.exports.controller = function(app) {
 
@@ -49,7 +49,7 @@ module.exports.controller = function(app) {
   /**
    * Ensure current user is an owner of the company who ows the label
    * Label ID must be passed as req.params.labelId
-   **/
+   */
   function ensureCompanyOwnerFromLabel(req, res, next) {
     var labelId = req.params.labelId;
     var userId = req.user;
@@ -68,7 +68,7 @@ module.exports.controller = function(app) {
         if (!companies) {
           var err = new Error();
           err.status = 401;
-          err.message = 'You don\'t have access to the requested resource ';
+          err.message = 'You don\'t have access to the requested resource';
           return next(err);
         }
         companies.forEach(function(company) {
@@ -81,7 +81,7 @@ module.exports.controller = function(app) {
               var err = new Error();
               err.status = 401;
               err.message =
-                'You don\'t have access to the requested resource ';
+                'You don\'t have access to the requested resource';
               return next(err);
             }
             return next();
@@ -346,120 +346,6 @@ module.exports.controller = function(app) {
     });
 
   /**
-   * POST /labels/:idLabel/profilePicture/:width/:height/
-   * Upload label profile picture to the CDN, original size and resized
-   */
-  app.post('/labels/:labelId/profilePicture/:width/:height/',
-    authenticationUtils.ensureAuthenticated, ensureLabelManagerOrCompanyOwner,
-    fileUtils.uploadFunction(
-      fileUtils.localImagePath,
-      fileUtils.remoteImagePath),
-    fileUtils.resizeFunction(
-      fileUtils.localImagePath,
-      fileUtils.remoteImagePath),
-    function(req, res, next) {
-
-      req.checkParams('labelId', 'Label id is invalid').notEmpty().isInt();
-      req.checkParams('width', 'Width is invalid').notEmpty().isInt();
-      req.checkParams('height', 'Height is invalid').notEmpty().isInt();
-      var errors = req.validationErrors();
-      if (errors) {
-        var err = new Error();
-        err.status = 400;
-        err.message = 'There have been validation errors';
-        err.validation = errors;
-        return next(err);
-      }
-
-      var idLabel = req.params.labelId;
-      model.Label.find({
-        where: {
-          id: idLabel
-        }
-      }).then(function(label) {
-        var oldLogo = label.logo;
-        var oldFullSizeLogo = label.fullSizeLogo;
-        label.logo =
-          fileUtils.remoteImagePath(req, req.uploadedFile[0].resizedFilename);
-        label.fullSizeLogo =
-          fileUtils.remoteImagePath(req, req.uploadedFile[0].filename);
-
-        label.save().then(function() {
-          // we remove old avatars from the CDN
-          cloudstorage.remove(oldLogo);
-          cloudstorage.remove(oldFullSizeLogo);
-          // We remove temporarily stored files
-          fs.unlink(
-            fileUtils.localImagePath(
-              req,
-              req.uploadedFile[0].filename));
-          fs.unlink(
-            fileUtils.localImagePath(
-              req,
-              req.uploadedFile[0].resizedFilename));
-
-          res.writeHead(200, {
-            'content-type': 'text/html'
-          }); //http response header
-          res.end(JSON.stringify(req.uploadedFile));
-        });
-      });
-    });
-
-  /**
-   * POST /labels/:idLabel/dropZone
-   * Upload a file to the dropZone for the label with id :idLabel
-   */
-  app.put('/labels/:labelId/dropZone/',
-    authenticationUtils.ensureAuthenticated, ensureLabelManagerOrCompanyOwner,
-    fileUtils.uploadFunction(
-      fileUtils.localImagePath,
-      fileUtils.remoteImagePath),
-    function(req, res) {
-
-      var idLabel = req.params.labelId;
-      console.log('****************');
-      console.log(req.uploadedFile);
-      console.log('****************');
-
-      model.DropZoneFile.find({
-        where: model.Sequelize.and({
-          fileName: req.uploadedFile[0].originalfilename
-        }, {
-          extension: req.uploadedFile[0].extension
-        })
-      }).then(function(file) {
-        if (file) {
-          // file exists .. Update file? 
-          file.path = req.uploadedFile[0].filename;
-          file.size = req.uploadedFile[0].filesize;
-          file.save().then(function() {
-            res.send();
-          });
-        } else {
-          model.DropZoneFile.create({
-            fileName: req.uploadedFile[0].originalfilename,
-            extension: req.uploadedFile[0].extension,
-            size: req.uploadedFile[0].filesize,
-            path: req.uploadedFile[0].filename,
-          }).then(function(dropZoneFile) {
-            model.Label.find({
-              where: {
-                id: idLabel
-              }
-            }).then(function(label) {
-              label.addDropZoneFiles(dropZoneFile)
-                .then(function() {
-                  res.send();
-                });
-            });
-          });
-        }
-      });
-      //res.send();
-    });
-
-  /**
    * POST /labels/:idLabel/dropZone
    * Upload a file to the dropZone for the label with id :idLabel
    */
@@ -487,7 +373,7 @@ module.exports.controller = function(app) {
       var size = req.body.size;
 
       var remotePath =
-        fileUtils.remoteDropZonePath(labelId, filename + '.' + extension);
+        helper.remoteDropZonePath(labelId, filename + '.' + extension);
 
       model.Label.find({
         where: {
@@ -521,7 +407,7 @@ module.exports.controller = function(app) {
                       var expiration = new Date(Date.now() + 60 * 1000);
                       cloudstorage.getSignedPolicy(remotePath, {
                           expiration: expiration.getTime(),
-                          startsWith: ['$key', 'dropZone'],
+                          startsWith: ['$key', dropZoneFile.path],
                           contentLengthRange: {
                             min: 0,
                             max: 104857600
@@ -545,7 +431,7 @@ module.exports.controller = function(app) {
               var expiration = new Date(Date.now() + 60 * 1000);
               cloudstorage.getSignedPolicy(remotePath, {
                   expiration: expiration.getTime(),
-                  startsWith: ['$key', 'dropZone'],
+                  startsWith: ['$key', file.path],
                   contentLengthRange: {
                     min: 0,
                     max: 104857600
@@ -638,7 +524,15 @@ module.exports.controller = function(app) {
     function(req, res, next) {
 
       req.checkParams('labelId', 'Label id is invalid').notEmpty().isInt();
-      req.checkBody('id', 'DropZoneFile id is invalid').notEmpty().isInt();
+      req.checkParams('id', 'DropZoneFile id is invalid').notEmpty().isInt();
+      var errors = req.validationErrors();
+      if (errors) {
+        var err = new Error();
+        err.status = 400;
+        err.message = 'There have been validation errors';
+        err.validation = errors;
+        return next(err);
+      }
 
       var labelId = req.params.labelId;
       var id = req.params.id;
@@ -1001,4 +895,31 @@ module.exports.controller = function(app) {
       });
     });
 
+  /**
+   * POST '/labels/:labelId/profilePicture/createFile'
+   * Request a CDN policy to upload a new profile picture, if an update was
+   * already in progress the old request is deleted from the CDN
+   */
+  app.post('/labels/:labelId/profilePicture/createFile',
+    authenticationUtils.ensureAuthenticated,
+    imagesController.createImageFactory('logo', helper));
+
+  /**
+   * POST '/labels/:labelId/profilePicture/confirmFile'
+   * Confirm the upload of the requested new logo, store it in the database
+   * as label information
+   */
+  app.post('/labels/:labelId/profilePicture/confirmFile',
+    authenticationUtils.ensureAuthenticated,
+    imagesController.confirmImageFactory(
+      'logo', ['small', 'medium', 'large'], helper));
+
+  /**
+   * GET '/labels/:labelId/profilePicture/:size(small|large|medium)'
+   * Get the label logo in the desired size, if it does not exist download the
+   * original logo and resize it
+   */
+  app.get('/labels/:labelId/profilePicture/:size(small|medium|large)',
+    imagesController.getImageFactory('logo', helper));
+  
 }; /* End of labels controller */

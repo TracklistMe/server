@@ -2,6 +2,8 @@
 
 var fs = require('fs-extra');
 
+var imagesController = rootRequire('controllers/images');
+var helper = rootRequire('helpers/companies');
 var fileUtils = rootRequire('utils/file-utils');
 var authenticationUtils = rootRequire('utils/authentication-utils');
 var model = rootRequire('models/model');
@@ -205,20 +207,20 @@ module.exports.controller = function(app) {
     });
 
   /**
-   * POST /companies/:idCompany/profilePicture/:width/:height   
+   * POST /companies/:companyId/profilePicture/:width/:height   
    * Add a profile picture for the company
    */
-  app.post('/companies/:idCompany/profilePicture/:width/:height/',
+  app.post('/companies/:companyId/profilePicture/:width/:height/',
     authenticationUtils.ensureAuthenticated,
     fileUtils.uploadFunction(
       fileUtils.localImagePath, fileUtils.remoteImagePath),
     fileUtils.resizeFunction(
       fileUtils.localImagePath, fileUtils.remoteImagePath),
     function(req, res) {
-      var idCompany = req.params.idCompany;
+      var companyId = req.params.companyId;
       model.Company.find({
         where: {
-          id: idCompany
+          id: companyId
         }
       }).then(function(company) {
         var oldLogo = company.logo;
@@ -247,4 +249,31 @@ module.exports.controller = function(app) {
       });
     });
 
-}; /* End of labels controller */
+  /**
+   * POST '/labels/:labelId/profilePicture/createFile'
+   * Request a CDN policy to upload a new profile picture, if an update was
+   * already in progress the old request is deleted from the CDN
+   */
+  app.post('/companies/:companyId/profilePicture/createFile',
+    authenticationUtils.ensureAuthenticated,
+    imagesController.createImageFactory('logo', helper));
+
+  /**
+   * POST '/labels/:labelId/profilePicture/confirmFile'
+   * Confirm the upload of the requested new logo, store it in the database
+   * as label information
+   */
+  app.post('/companies/:companyId/profilePicture/confirmFile',
+    authenticationUtils.ensureAuthenticated,
+    imagesController.confirmImageFactory(
+      'logo', ['small', 'medium', 'large'], helper));
+
+  /**
+   * GET '/labels/:labelId/profilePicture/:size(small|large|medium)'
+   * Get the label logo in the desired size, if it does not exist download the
+   * original logo and resize it
+   */
+  app.get('/companies/:companyId/profilePicture/:size(small|medium|large)',
+    imagesController.getImageFactory('logo', helper));
+
+}; /* End of companies controller */

@@ -30,6 +30,10 @@ var User = sequelizeObject.define('User', {
   },
   email: Sequelize.STRING,
   avatar: Sequelize.STRING,
+  newAvatar: Sequelize.STRING,
+  smallAvatar: Sequelize.STRING,
+  mediumAvatar: Sequelize.STRING,
+  largeAvatar: Sequelize.STRING,
   fullSizeAvatar: Sequelize.STRING,
   password: Sequelize.STRING,
   displayName: Sequelize.STRING,
@@ -85,7 +89,11 @@ var Company = sequelizeObject.define('Company', {
     allowNull: false,
     defaultValue: true
   },
-  logo: Sequelize.STRING
+  logo: Sequelize.STRING,
+  newLogo: Sequelize.STRING,
+  smallLogo: Sequelize.STRING,
+  mediumLogo: Sequelize.STRING,
+  largeLogo: Sequelize.STRING,
 });
 
 exports.Company = Company;
@@ -106,6 +114,10 @@ var Label = sequelizeObject.define('Label', {
     defaultValue: true
   },
   logo: Sequelize.STRING,
+  newLogo: Sequelize.STRING,
+  smallLogo: Sequelize.STRING,
+  mediumLogo: Sequelize.STRING,
+  largeLogo: Sequelize.STRING,
   fullSizeLogo: Sequelize.STRING
 });
 
