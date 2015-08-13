@@ -57,7 +57,7 @@ exports.requestEntity = requestEntity;
  * Returns a possibile location for a label logo on the CDN
  */
 function remoteImagePath(req, extension) {
-  return 'labels/' + req.params.labelId +
+  return 'companies/' + req.params.companyId +
     "/logo_" + Date.now() + '.' + extension;
 }
 

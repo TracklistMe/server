@@ -7,7 +7,7 @@ var im = require('imagemagick');
 var cloudstorage = rootRequire('libs/cdn/cloudstorage');
 var config = rootRequire('config/config');
 
-var uploadFolder = path.resolve(__dirname + "/../uploadFolder");
+var uploadFolder = path.resolve(__dirname + '/../uploadFolder');
 
 exports.uploadFolder = uploadFolder;
 
@@ -20,7 +20,7 @@ function timestampName(filename) {
     return new Date().getTime()
   };
   var extension = filename.split('.').slice(0).pop();
-  filename = filename.replace(extension, '').replace(/\W+/g, '') + "_" + Date.now() + "." + extension;
+  filename = filename.replace(extension, '').replace(/\W+/g, '') + '_' + Date.now() + '.' + extension;
   return filename;
 }
 
@@ -32,7 +32,7 @@ exports.timestampName = timestampName;
 function resizedName(filename, width, height) {
   var extension = filename.split('.').slice(0).pop();
   return filename.replace(extension, '').replace(/\W+/g, '') +
-    "_resized_" + width + '-' + height + "." + extension;
+    '_resized_' + width + '-' + height + '.' + extension;
 }
 
 exports.resizedName = resizedName;
@@ -54,8 +54,8 @@ exports.localTmpPath = localTmpPath;
  **/
 function resizedPath(filename, width, height) {
   var extension = filename.split('.').slice(0).pop();
-  return filename.replace(extension, '') +
-    "_resized_" + width + '-' + height + "." + extension;
+  return filename.replace('.' + extension, '') +
+    '_resized_' + width + '-' + height + '.' + extension;
 }
 
 exports.resizedPath = resizedPath;
@@ -65,7 +65,7 @@ exports.resizedPath = resizedPath;
  * on the staging server
  **/
 function localImagePath(req, filename) {
-  return uploadFolder + '/img/' + req.user + "_" + filename;
+  return uploadFolder + '/img/' + req.user + '_' + filename;
 }
 
 exports.localImagePath = localImagePath;
@@ -76,7 +76,7 @@ exports.localImagePath = localImagePath;
  * TODO avoid using req
  **/
 function remoteImagePath(req, filename) {
-  return 'img/' + req.user + "/" + filename;
+  return 'img/' + req.user + '/' + filename;
 }
 
 exports.remoteImagePath = remoteImagePath;
@@ -142,13 +142,13 @@ function uploadFunction(localPathBuilder, remotePathBuilder) {
           function(err, key) {
             // There was an error uploading the file
             if (err) {
-              err.message = "Failed uploading file";
+              err.message = 'Failed uploading file';
               return next(err);
             }
             //Get file stats (including size) for file and continue
             fs.stat(localPath, function(err, stats) {
               if (err || !stats.isFile()) {
-                err.message = "Failed uploading file";
+                err.message = 'Failed uploading file';
                 return next(err);
               }
               req.uploadedFile[0].filesize = stats.size;
@@ -159,7 +159,7 @@ function uploadFunction(localPathBuilder, remotePathBuilder) {
 
       // We failed writing to disk
       fstream.on('error', function(err) {
-        err.message = "Failed uploading file";
+        err.message = 'Failed uploading file';
         return next(err);
       });
     }); // @END/ .req.busboy
@@ -193,7 +193,7 @@ function resizeFunction(localPathBuilder, remotePathBuilder) {
         gravity: 'Center'
       }, function(err, stdout, stderr) {
         if (err) {
-          err.message = "Failed resizing file";
+          err.message = 'Failed resizing file';
           return next(err);
         }
         // CDN upload
@@ -201,7 +201,7 @@ function resizeFunction(localPathBuilder, remotePathBuilder) {
           localPathBuilder(req, resizedFilename),
           function(err, key) {
             if (err) {
-              err.message = "Failed uploading file";
+              err.message = 'Failed uploading file';
               return next(err);
             }
             req.uploadedFile[0].resizedFilename = resizedFilename;

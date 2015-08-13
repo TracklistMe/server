@@ -153,6 +153,10 @@ var Artist = sequelizeObject.define('Artist', {
   },
   displayName: Sequelize.STRING,
   avatar: Sequelize.STRING,
+  newAvatar: Sequelize.STRING,
+  smallAvatar: Sequelize.STRING,
+  mediumAvatar: Sequelize.STRING,
+  largeAvatar: Sequelize.STRING,
   fullSizeAvatar: Sequelize.STRING,
 });
 

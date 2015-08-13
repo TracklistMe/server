@@ -2,7 +2,7 @@
 
 var fs = require('fs-extra');
 
-var fileUtils = rootRequire('utils/file-utils');
+var imagesController = rootRequire('controllers/images');
 var authenticationUtils = rootRequire('utils/authentication-utils');
 var model = rootRequire('models/model');
 var cloudstorage = rootRequire('libs/cdn/cloudstorage');
@@ -14,7 +14,7 @@ module.exports.controller = function(app) {
   /**
    * GET /artists/search/:searchString
    * Return list of all the artists whose displayName matches the searchString
-   **/
+   */
   app.get('/artists/search/:searchString', function(req, res) {
     var searchString = req.params.searchString;
     model.Artist.findAll({
@@ -23,7 +23,6 @@ module.exports.controller = function(app) {
       res.send(artists);
     });
   });
-
 
   /**
    * GET /artists/searchExact/:searchString
@@ -45,7 +44,7 @@ module.exports.controller = function(app) {
    * GET /artists/
    * Return list of all the artists
    * TODO: pagination
-   **/
+   */
   app.get('/artists/',
     authenticationUtils.ensureAuthenticated, authenticationUtils.ensureAdmin,
     function(req, res) {
@@ -57,7 +56,7 @@ module.exports.controller = function(app) {
   /**
    * GET /artists/:id
    * Return the artist associated with the specified ID
-   **/
+   */
   app.get('/artists/:id',
     authenticationUtils.ensureAuthenticated, authenticationUtils.ensureAdmin,
     function(req, res) {
@@ -79,7 +78,7 @@ module.exports.controller = function(app) {
    * PUT /artists/:id
    * Update artist information
    * TODO check passed data
-   **/
+   */
   app.put('/artists/:id',
     authenticationUtils.ensureAuthenticated, authenticationUtils.ensureAdmin,
     function(req, res) {
@@ -101,7 +100,7 @@ module.exports.controller = function(app) {
   /**
    * Post /artists/
    * Create new artist
-   **/
+   */
   app.post('/artists/',
     authenticationUtils.ensureAuthenticated, authenticationUtils.ensureAdmin,
     function(req, res) {
@@ -126,7 +125,7 @@ module.exports.controller = function(app) {
   /**
    * POST /artists/:idArtist/owners/
    * Add a new owner to the artist
-   **/
+   */
   app.post('/artists/:artistId/owners',
     authenticationUtils.ensureAuthenticated, authenticationUtils.ensureAdmin,
     function(req, res) {
@@ -166,13 +165,13 @@ module.exports.controller = function(app) {
   /**
    * POST /artists/:artistId/profilePicture/:width/:height/
    * Upload artist profile picture to the CDN, original size and resized
-   **/
+   */
   app.post('/artists/:artistId/profilePicture/:width/:height/',
     authenticationUtils.ensureAuthenticated,
-    fileUtils.uploadFunction(
+    helper.uploadFunction(
       helper.localImagePath,
       helper.remoteImagePath),
-    fileUtils.resizeFunction(
+    helper.resizeFunction(
       helper.localImagePath,
       helper.remoteImagePath),
     function(req, res) {
@@ -206,5 +205,32 @@ module.exports.controller = function(app) {
         });
       });
     });
+
+  /**
+   * POST '/artists/:artistId/profilePicture/createFile'
+   * Request a CDN policy to upload a new profile picture, if an update was
+   * already in progress the old request is deleted from the CDN
+   */
+  app.post('/artists/:artistId/profilePicture/createFile',
+    authenticationUtils.ensureAuthenticated,
+    imagesController.createImageFactory('avatar', helper));
+
+  /**
+   * POST '/artists/:artistId/profilePicture/confirmFile'
+   * Confirm the upload of the requested new avatar, store it in the database
+   * as artist information
+   */
+  app.post('/artists/:artistId/profilePicture/confirmFile',
+    authenticationUtils.ensureAuthenticated,
+    imagesController.confirmImageFactory(
+      'avatar', ['small', 'medium', 'large'], helper));
+
+  /**
+   * GET '/artists/:artistId/profilePicture/:size(small|large|medium)'
+   * Get the artist avatar in the desired size, if it does not exist download the
+   * original avatar and resize it
+   */
+  app.get('/artists/:artistId/profilePicture/:size(small|medium|large)',
+    imagesController.getImageFactory('avatar', helper));
 
 }; /* End of artists controller */
