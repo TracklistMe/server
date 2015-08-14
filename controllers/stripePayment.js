@@ -120,22 +120,22 @@ module.exports.controller = function(app) {
 
       Q.all(promisesArray).then(function(results) {
         var sumPrices = 0.0;
+        var totalTaxToPay = 0.0;
+        var finalAmount = 0.0;
         for (var r = 0; r < results.length; r++) {
           // multiply by quantity
           sumPrices += (results[r] * cart[r].quantity);
         }
-
-        sumPrices = sumPrices.toFixed(2);
         // calculate the total taxes on the final amount
         console.log(sumPrices);
-        var totalTaxToPay = (sumPrices * (taxRate / 100)).toFixed(2);
+        totalTaxToPay = (sumPrices * (taxRate / 100));
         console.log(totalTaxToPay);
         // update the final billable amount
-        sumPrices += totalTaxToPay;
+        finalAmount = (Number(sumPrices) + Number(totalTaxToPay)).toFixed(2);
         //Multiply by 100.
 
 
-        console.log('FINAL PRICE ' + sumPrices);
+        console.log('FINAL PRICE ' + finalAmount);
 
         model.User.find({
           where: {
@@ -156,7 +156,7 @@ module.exports.controller = function(app) {
             console.log('CUSTOMER RECEIVED ');
 
             stripe.charges.create({
-              amount: sumPrices,
+              amount: finalAmount,
               currency: currency.shortname,
               customer: customer.id,
               metadata: {
