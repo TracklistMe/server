@@ -89,7 +89,6 @@ module.exports.controller = function(app) {
   }
 
   function moveTrackToLibrary(idTrack, idUser) {
-    console.log("adding a track")
     var deferred = Q.defer();
     model.LibraryItem.upsert({
       TrackId: idTrack,
@@ -101,7 +100,6 @@ module.exports.controller = function(app) {
   }
 
   function moveReleaseToLibrary(idRelease, idUser) {
-    console.log("adding a release" + idRelease + " - " + idUser)
     var deferred = Q.defer();
     var tracksToAdd = [];
     model.Release.find({
@@ -211,8 +209,7 @@ module.exports.controller = function(app) {
                 // GOT IT ! 
                 // PAYMENT as been done correctly, should move the just 
                 // bought tracks to the library of the user
-                // RELEASE should be expanded into tracks. 
-                console.log("No error proceed adding to library");
+                // RELEASE should be expanded into tracks.  
                 var cartToLibrary = [];
                 for (var i = 0; i < cart.length; i++) {
                   if (cart[i].id.indexOf('track') > -1) {
@@ -229,7 +226,7 @@ module.exports.controller = function(app) {
                         userId));
                   }
                 }
-                Q.all(cartToLibrary).then(function(results) {
+                Q.all(cartToLibrary).then(function() {
                   res.send(charge);
                 });
 

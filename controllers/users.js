@@ -205,6 +205,30 @@ module.exports.controller = function(app) {
       });
     });
 
+
+  /**
+   * GET /me/library
+   * Get authenticated user library
+   */
+  app.get('/me/library',
+    authenticationUtils.ensureAuthenticated,
+    function(req, res) {
+
+      model.LibraryItem.findAll({
+        include: [{
+          model: model.Track,
+          include: [{
+            model: model.Artist,
+            as: 'Producer'
+          }],
+        }],
+        where: {
+          UserId: req.user
+        }
+      }).then(function(itemLists) {
+        res.send(itemLists);
+      });
+    });
   /**
    * GET /me/companies/
    * Get all companies managed by the authenticated user or all companies in 
