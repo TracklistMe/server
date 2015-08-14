@@ -91,7 +91,7 @@ module.exports.controller = function(app) {
   function moveTrackToLibrary(idTrack, idUser) {
     console.log("adding a track")
     var deferred = Q.defer();
-    model.LibraryItem.create({
+    model.LibraryItem.upsert({
       TrackId: idTrack,
       UserId: idUser
     }).then(function() {
@@ -101,8 +101,9 @@ module.exports.controller = function(app) {
   }
 
   function moveReleaseToLibrary(idRelease, idUser) {
-    console.log("adding a release")
+    console.log("adding a release" + idRelease + " - " + idUser)
     var deferred = Q.defer();
+    var tracksToAdd = [];
     model.Release.find({
       attributes: ['id'],
       where: {
@@ -113,18 +114,14 @@ module.exports.controller = function(app) {
         attributes: ['id']
       }
     }).then(function(release) {
-      var tracksToAdd = [];
-      for (var t = 0; t < release.Tracks.length; t++) {
-        tracksToAdd.push({
-          TrackId: release.Tracks[t].id,
-          UserId: idUser
-        });
-      }
 
-      // Add all the track fo the release in a bulk operation
-      model.LibraryItem.bulkCreate(tracksToAdd).then(function() {
-        deferred.resolve();
-      });
+      for (var t = 0; t < release.Tracks.length; t++) {
+        tracksToAdd.push(moveTrackToLibrary(release.Tracks[t].id, idUser));
+      }
+    });
+    // call for each track.
+    Q.all(tracksToAdd).then(function() {
+      deferred.resolve();
     });
     return deferred.promise;
   }
@@ -199,7 +196,7 @@ module.exports.controller = function(app) {
             email: user.email
           }).then(function(customer) {
             console.log('CUSTOMER RECEIVED ');
-            console.log("a")
+
             stripe.charges.create({
               amount: finalAmount,
               currency: currency.shortname,
@@ -209,13 +206,13 @@ module.exports.controller = function(app) {
                 // TODO consider if we want to have a TRANSACTION ID in our db
               },
             }, function(err, charge) {
-              console.log(err)
+              console.log(err);
               if (!err) {
                 // GOT IT ! 
                 // PAYMENT as been done correctly, should move the just 
                 // bought tracks to the library of the user
                 // RELEASE should be expanded into tracks. 
-                console.log("No error proceed adding to library")
+                console.log("No error proceed adding to library");
                 var cartToLibrary = [];
                 for (var i = 0; i < cart.length; i++) {
                   if (cart[i].id.indexOf('track') > -1) {
@@ -243,6 +240,4 @@ module.exports.controller = function(app) {
       }, console.error);
 
     });
-
-
 }; /* End of payment controller */
