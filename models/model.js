@@ -186,6 +186,10 @@ var Release = sequelizeObject.define('Release', {
     defaultValue: true
   },
   cover: Sequelize.STRING,
+  newCover: Sequelize.STRING,
+  smallCover: Sequelize.STRING,
+  mediumCover: Sequelize.STRING,
+  largeCover: Sequelize.STRING,
   catalogNumber: Sequelize.STRING,
   UPC: Sequelize.STRING,
   GRid: Sequelize.STRING,

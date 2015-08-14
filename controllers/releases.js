@@ -2,11 +2,13 @@
 
 var Q = require('q');
 var path = require('path');
-var fileUtils = rootRequire('utils/file-utils');
+var helper = rootRequire('helpers/releases');
 var authenticationUtils = rootRequire('utils/authentication-utils');
 var model = rootRequire('models/model');
 var cloudstorage = rootRequire('libs/cdn/cloudstorage');
 var rabbitmq = rootRequire('rabbitmq/rabbitmq');
+var imagesController = rootRequire('controllers/images');
+
 
 module.exports.controller = function(app) {
 
@@ -110,7 +112,7 @@ module.exports.controller = function(app) {
         // Move lossless file
         var trackFilename = path.basename(databaseTrack.path);
         var newLosslessPath =
-          fileUtils.remoteReleasePath(releaseId, trackFilename);
+          helper.remoteReleasePath(releaseId, trackFilename);
         cloudstorage.copy(
           databaseTrack.path,
           newLosslessPath,
@@ -210,7 +212,7 @@ module.exports.controller = function(app) {
     var oldCoverPath = databaseRelease.cover;
     var coverFilename = path.basename(oldCoverPath);
     var newCoverPath =
-      fileUtils.remoteReleasePath(databaseRelease.id, coverFilename);
+      helper.remoteReleasePath(databaseRelease.id, coverFilename);
 
     for (var i = 0; i < release.Tracks.length; i++) {
       var track = release.Tracks[i];
@@ -376,7 +378,6 @@ module.exports.controller = function(app) {
     });
   });
 
-
   /**
    * GET /releases/:id
    * Return the release associated to the id
@@ -529,4 +530,31 @@ module.exports.controller = function(app) {
             });
         });
     });
-}; /* End of labels controller */
+
+  /**
+   * POST '/releases/:releaseId/cover/createFile'
+   * Request a CDN policy to upload a new release cover, if an update was
+   * already in progress the old request is deleted from the CDN
+   */
+  app.post('/releases/:releaseId/cover/createFile',
+    authenticationUtils.ensureAuthenticated,
+    imagesController.createImageFactory('cover', helper));
+
+  /**
+   * POST '/releases/:releaseId/cover/confirmFile'
+   * Confirm the upload of the requested new cover, store it in the database
+   * as release information
+   */
+  app.post('/releases/:releaseId/cover/confirmFile',
+    authenticationUtils.ensureAuthenticated,
+    imagesController.confirmImageFactory(
+      'cover', ['small', 'medium', 'large'], helper));
+
+  /**
+   * GET '/releases/:releaseId/cover/:size(small|large|medium)'
+   * Get the release cover in the desired size, if it does not exist download the
+   * original avatar and resize it
+   */
+  app.get('/releases/:releaseId/cover/:size(small|medium|large)',
+    imagesController.getImageFactory('cover', helper));
+}; /* End of release controller */
