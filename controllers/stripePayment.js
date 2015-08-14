@@ -7,9 +7,10 @@ var stripe = require('stripe')(config.STRIPE_PRIVATE);
 
 module.exports.controller = function(app) {
 
+
+
   /**
    * Find the price of a track given idTrack and idCurrency
-   * TODO move to Track model
    */
   function findPriceTrack(idTrack, idCurrency) {
     var deferred = Q.defer();
@@ -87,6 +88,49 @@ module.exports.controller = function(app) {
     return deferred.promise;
   }
 
+  function moveTrackToLibrary(idTrack, idUser) {
+    console.log("adding a track")
+    var deferred = Q.defer();
+    model.LibraryItem.create({
+      TrackId: idTrack,
+      UserId: idUser
+    }).then(function() {
+      deferred.resolve(idTrack);
+    });
+    return deferred.promise;
+  }
+
+  function moveReleaseToLibrary(idRelease, idUser) {
+    console.log("adding a release")
+    var deferred = Q.defer();
+    model.Release.find({
+      attributes: ['id'],
+      where: {
+        id: idRelease
+      },
+      include: {
+        model: model.Track,
+        attributes: ['id']
+      }
+    }).then(function(release) {
+      var tracksToAdd = [];
+      for (var t = 0; t < release.Tracks.length; t++) {
+        tracksToAdd.push({
+          TrackId: release.Tracks[t].id,
+          UserId: idUser
+        });
+      }
+
+      // Add all the track fo the release in a bulk operation
+      model.LibraryItem.bulkCreate(tracksToAdd).then(function() {
+        deferred.resolve();
+      });
+    });
+    return deferred.promise;
+  }
+
+
+
   /**
    * POST /payment/:idToken
    * Return the list of labels whose displayName exactly matches the search
@@ -128,10 +172,11 @@ module.exports.controller = function(app) {
         }
         // calculate the total taxes on the final amount
         console.log(sumPrices);
-        totalTaxToPay = (sumPrices * (taxRate / 100));
+        totalTaxToPay = (sumPrices * (taxRate) / 100).toFixed(2);
         console.log(totalTaxToPay);
         // update the final billable amount
-        finalAmount = (Number(sumPrices) + Number(totalTaxToPay)).toFixed(2);
+        finalAmount = parseInt(sumPrices * 100) +
+          parseInt(totalTaxToPay * 100);
         //Multiply by 100.
 
 
@@ -154,7 +199,7 @@ module.exports.controller = function(app) {
             email: user.email
           }).then(function(customer) {
             console.log('CUSTOMER RECEIVED ');
-
+            console.log("a")
             stripe.charges.create({
               amount: finalAmount,
               currency: currency.shortname,
@@ -164,21 +209,40 @@ module.exports.controller = function(app) {
                 // TODO consider if we want to have a TRANSACTION ID in our db
               },
             }, function(err, charge) {
-
+              console.log(err)
               if (!err) {
                 // GOT IT ! 
-                // PAYMENT as been done correctly, should move the just b
-                // ought tracks to the library of the user
-                // RELEASE should be expanded into tracks.
-                // 
-                console.log('PAYMENT RECEIVED! ');
-                res.send(charge);
+                // PAYMENT as been done correctly, should move the just 
+                // bought tracks to the library of the user
+                // RELEASE should be expanded into tracks. 
+                console.log("No error proceed adding to library")
+                var cartToLibrary = [];
+                for (var i = 0; i < cart.length; i++) {
+                  if (cart[i].id.indexOf('track') > -1) {
+                    // Move the track to the library
+                    cartToLibrary.push(
+                      moveTrackToLibrary(cart[i].id.split('-').pop(),
+                        userId));
+                  }
+                  if (cart[i].id.indexOf('release') > -1) {
+                    // Move the release to the library, by adding all the tracks
+                    // included in the release
+                    cartToLibrary.push(
+                      moveReleaseToLibrary(cart[i].id.split('-').pop(),
+                        userId));
+                  }
+                }
+                Q.all(cartToLibrary).then(function(results) {
+                  res.send(charge);
+                });
+
               }
             });
-            // TODO Here fetch the cloud link to the 
-            // product that has been purcheased.
           });
         });
       }, console.error);
+
     });
+
+
 }; /* End of payment controller */
