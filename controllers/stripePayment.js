@@ -99,6 +99,7 @@ module.exports.controller = function(app) {
       var userId = req.user;
       var currency = req.body.currency;
       var cart = req.body.cart;
+      var taxRate = req.body.taxRate;
 
       // Recompute the price for the currency.
       var promisesArray = [];
@@ -125,9 +126,15 @@ module.exports.controller = function(app) {
         }
 
         sumPrices = sumPrices.toFixed(2);
-        sumPrices = sumPrices * 100;
+        // calculate the total taxes on the final amount
+        console.log(sumPrices);
+        var totalTaxToPay = (sumPrices * (taxRate / 100)).toFixed(2);
+        console.log(totalTaxToPay);
+        // update the final billable amount
+        sumPrices += totalTaxToPay;
+        //Multiply by 100.
 
-        // TODO Add the VAT
+
         console.log('FINAL PRICE ' + sumPrices);
 
         model.User.find({
