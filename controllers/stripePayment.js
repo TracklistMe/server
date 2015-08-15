@@ -199,12 +199,14 @@ module.exports.controller = function(app) {
               amount: finalAmount,
               currency: currency.shortname,
               customer: customer.id,
+              expand: ['balance_transaction'],
               metadata: {
                 // CHANCE TO PIGGY BACK HERE SOME ADDITIONAL INFORMATION
                 // TODO consider if we want to have a TRANSACTION ID in our db
               },
             }, function(err, charge) {
-              console.log(err);
+              console.log(charge);
+              console.log(charge.balance_transaction);
               if (!err) {
                 // GOT IT ! 
                 // PAYMENT as been done correctly, should move the just 
