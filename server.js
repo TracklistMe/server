@@ -50,7 +50,6 @@ var stripePayment = rootRequire('controllers/stripePayment.js');
  */
 var dbProxy = rootRequire('models/model');
 
-console.log(process.env.HOST)
 
 /*
 User.beforeCreate(function(user, fn) {

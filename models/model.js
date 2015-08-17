@@ -326,8 +326,28 @@ var LibraryItem = sequelizeObject.define('LibraryItem', {
     primaryKey: true
   }
 });
-
 exports.LibraryItem = LibraryItem;
+
+/**
+ * Model: Track
+ */
+
+LibraryItem.belongsTo(User, {
+  foreignKey: {
+    name: 'UserId',
+    allowNull: false
+  },
+  onDelete: 'CASCADE'
+});
+
+LibraryItem.belongsTo(Track, {
+  foreignKey: {
+    name: 'TrackId',
+    allowNull: true
+  },
+  onDelete: 'CASCADE'
+});
+
 
 Track.belongsToMany(User, {
   through: LibraryItem,
