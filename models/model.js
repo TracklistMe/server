@@ -411,8 +411,6 @@ Currency.belongsToMany(MasterPrice, {
   onDelete: 'CASCADE'
 });
 
-exports.ConvertedPrice = ConvertedPrice;
-
 Currency.hasMany(ConvertedPrice);
 
 MasterPrice.belongsToMany(Currency, {
@@ -425,6 +423,128 @@ MasterPrice.belongsToMany(Currency, {
 });
 
 exports.ConvertedPrice = ConvertedPrice;
+
+/**
+ * Model: Transaction
+ */
+var Transaction = sequelizeObject.define('Transaction', {
+  id: {
+    type: Sequelize.INTEGER,
+    autoIncrement: true,
+    primaryKey: true
+  },
+  // User currency
+  originalPrice: Sequelize.DECIMAL(10, 2),
+  // Percentage
+  taxPercentagePayed: Sequelize.DECIMAL(10, 2),
+  // User currency
+  taxAmountPayed: Sequelize.DECIMAL(10, 2),
+  // Stripe currency
+  transactionCost: Sequelize.DECIMAL(10, 2),
+  // Stripe currency (originalPrice - transactionCost - tax)
+  finalPrice: Sequelize.DECIMAL(10, 2),
+  // Stripe id for the transaction
+  stripeTransactionId: Sequelize.STRING
+});
+
+Transaction.belongsTo(Track, {
+  foreignKey: {
+    name: 'ItemId',
+    allowNull: false
+  },
+  onDelete: 'NO ACTION'
+});
+
+Track.hasMany(Transaction, {
+  foreignKey: {
+    name: 'ItemId',
+    allowNull: false
+  },
+  onDelete: 'NO ACTION'
+});
+
+Track.belongsToMany(Transaction, {
+  through: ConvertedPrice,
+  foreignKey: {
+    name: 'MasterPrice',
+    allowNull: false
+  },
+  onDelete: 'CASCADE'
+});
+
+Transaction.belongsTo(Currency, {
+  foreignKey: {
+    name: 'OriginalTransactionCurrencyId',
+    allowNull: false
+  },
+  onDelete: 'RESTRICT'
+});
+
+Transaction.belongsTo(Release, {
+  foreignKey: {
+    name: 'ReleaseId',
+    allowNull: false
+  },
+  onDelete: 'NO ACTION'
+});
+
+Release.hasMany(Transaction, {
+  foreignKey: {
+    name: 'ReleaseId',
+    allowNull: false
+  },
+  onDelete: 'NO ACTION'
+});
+
+Transaction.belongsTo(Release, {
+  foreignKey: {
+    name: 'ReleaseId',
+    allowNull: false
+  },
+  onDelete: 'NO ACTION'
+});
+
+Release.hasMany(Transaction, {
+  foreignKey: {
+    name: 'ReleaseId',
+    allowNull: false
+  },
+  onDelete: 'NO ACTION'
+});
+
+Transaction.belongsTo(Label, {
+  foreignKey: {
+    name: 'LabelId',
+    allowNull: false
+  },
+  onDelete: 'NO ACTION'
+});
+
+Label.hasMany(Transaction, {
+  foreignKey: {
+    name: 'LabelId',
+    allowNull: false
+  },
+  onDelete: 'NO ACTION'
+});
+
+Transaction.belongsTo(Company, {
+  foreignKey: {
+    name: 'CompanyId',
+    allowNull: false
+  },
+  onDelete: 'NO ACTION'
+});
+
+Company.hasMany(Transaction, {
+  foreignKey: {
+    name: 'CompanyId',
+    allowNull: false
+  },
+  onDelete: 'NO ACTION'
+});
+
+exports.Transaction = Transaction;
 
 /**
  * Track and Release prices
@@ -526,7 +646,6 @@ Genre.belongsToMany(Track);
 /**
  * Create database and default entities if do not exist
  **/
-/*
 sequelizeObject.sync().then(function() {
   Currency.find({
     where: {
@@ -538,17 +657,9 @@ sequelizeObject.sync().then(function() {
         name: 'United States Dollar',
         shortname: 'USD',
         symbol: '$'
-      }).then(function(currency) {
-        DefaultCurrency = currency;
-        Internationalization.create({
-          country: 'US',
-          LocalCurrency: currency.id
-        });
       });
-    } else {
-      DefaultCurrency = currency;
     }
   });
 });
-*/
+
 exports.DefaultCurrency = 'USD';
