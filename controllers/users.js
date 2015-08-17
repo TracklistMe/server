@@ -205,7 +205,6 @@ module.exports.controller = function(app) {
       });
     });
 
-
   /**
    * GET /me/library
    * Get authenticated user library
@@ -229,6 +228,7 @@ module.exports.controller = function(app) {
         res.send(itemLists);
       });
     });
+
   /**
    * GET /me/companies/
    * Get all companies managed by the authenticated user or all companies in 
@@ -280,7 +280,6 @@ module.exports.controller = function(app) {
         }
       });
     });
-
 
   /**
    * GET /me/artists/
