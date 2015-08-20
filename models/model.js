@@ -483,15 +483,6 @@ Track.hasMany(Transaction, {
   onDelete: 'NO ACTION'
 });
 
-Track.belongsToMany(Transaction, {
-  through: ConvertedPrice,
-  foreignKey: {
-    name: 'MasterPrice',
-    allowNull: false
-  },
-  onDelete: 'CASCADE'
-});
-
 Transaction.belongsTo(Currency, {
   foreignKey: {
     name: 'OriginalTransactionCurrencyId',
