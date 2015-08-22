@@ -120,34 +120,10 @@ module.exports.controller = function(app) {
     return deferred.promise;
   }
 
-  function moveReleaseToLibrary(idRelease, idUser) {
-    var deferred = Q.defer();
-    var tracksToAdd = [];
-    model.Release.find({
-      attributes: ['id'],
-      where: {
-        id: idRelease
-      },
-      include: {
-        model: model.Track,
-        attributes: ['id']
-      }
-    }).then(function(release) {
-
-      for (var t = 0; t < release.Tracks.length; t++) {
-        tracksToAdd.push(moveTrackToLibrary(release.Tracks[t].id, idUser));
-      }
-    });
-    // call for each track.
-    Q.all(tracksToAdd).then(function() {
-      deferred.resolve();
-    });
-    return deferred.promise;
-  }
+  function registerTrackTransaction(trackTransactionInfo) {
 
 
-  function registerTrackTransaction(idTrack) {
-
+    console.log(trackTransactionInfo);
   }
 
 
@@ -273,28 +249,62 @@ module.exports.controller = function(app) {
             }, function(err, charge) {
               console.log(charge);
               console.log(charge.balance_transaction);
+              console.log("-------- MOVE TO LIBRARY ---------")
               if (!err) {
                 // GOT IT ! 
+
+                var stripeAmount = charge.balance_transaction.amount;
+                var stripeNet = charge.balance_transaction.net;
+                var stripeFee = charge.balance_transaction.fee;
+
+                // Percentage [0/1] gone on stripe 3 digits precision.
+                var feePercentage =
+                  Math.ceil(stripeFee / stripeAmount * 1000) / 1000;
+
+
                 // PAYMENT as been done correctly, should move the just 
                 // bought tracks to the library of the user
                 // RELEASE should be expanded into tracks.  
                 var cartToLibrary = [];
-                // STEP 3: MOVE TRACKS TO USER LIBRARY 
-                for (var i = 0; i < cart.length; i++) {
-                  console.log(cart[i]);
-                  if (cart[i].id.indexOf('track') > -1) {
-                    // Move the track to the library
-                    cartToLibrary.push(
-                      moveTrackToLibrary(cart[i].id.split('-').pop(),
-                        userId));
-                  }
-                  if (cart[i].id.indexOf('release') > -1) {
-                    // Move the release to the library, by adding all the tracks
-                    // included in the release
-                    cartToLibrary.push(
-                      moveReleaseToLibrary(cart[i].id.split('-').pop(),
-                        userId));
-                  }
+                for (var i = 0; i < tracks.length; i++) {
+                  var trackTaxAmountPayed = Math.round(100 * taxRate * tracks[i].trackConvertedPrice / 100) / 100;
+
+                  var consumerCost = tracks[i].trackConvertedPrice + trackTaxAmountPayed;
+
+                  var radioPayedOnTotal = consumerCost / charge.amount * 100;
+                  console.log(radioPayedOnTotal)
+                  console.log(Math.round((taxRate * tracks[i].trackConvertedPrice) + 100 * tracks[i].trackConvertedPrice) / 100)
+                  console.log("RATIO TRACK/TOTAL " + (charge.amount / 100))
+                    // STEP 3: MOVE TRACKS TO USER LIBRARY
+                  cartToLibrary.push(
+                    moveTrackToLibrary(
+                      tracks[i].trackId,
+                      userId
+                    )
+                  );
+                  // STEP 4: Create the transaction REPORT
+                  // Pro Rata calculation:
+                  // ProRata = TotalValue ITEMPRICE/TOTALPRICE
+
+                  cartToLibrary.push(
+                    registerTrackTransaction({
+                        itemId: tracks[i].trackId, //itemID
+                        // IN THE ORIGINAL CURRENCY 
+                        originalPrice: tracks[i].trackConvertedPrice, //originalPrice 
+                        taxPercentagePayed: taxRate, // a percentage cross currencies
+                        taxAmountPayed: taxRate * tracks[i].trackConvertedPrice / 100, //taxAmountPayed
+                        originalTransactionCurrencyId: currency.id, //originalTransactionCurrencyId
+                        // IN THE STRIPE CURRENCY FROM NOW ON
+                        transactionCost: stripeFee * (tracks[i].trackConvertedPrice / (charge.amount / 100)), //transactionCost
+                        finalPrice: stripeNet * (tracks[i].trackConvertedPrice / (charge.amount / 100)), //finalPrice
+                        stripeTransactionId: charge.id, //stripeTransactionId
+                        ReleaseId: tracks[i].releaseId, //ReleaseId
+                        LabelId: tracks[i].labelId, //LabelId
+                        CompanyId: 0
+                      } //CompanyId
+                    )
+                  );
+
                 }
                 // STEP 4: Create the transaction REPORT 
                 //PART THAT ADS THE INFORMATION TO THE TRANSACTIONS LIBRARY.
@@ -303,7 +313,7 @@ module.exports.controller = function(app) {
                     Track is deleted.
 
                     originalPrice: decimal 10,2 //initial price selected by 
-                    the user, if comes from the bundle is a fair split
+                    the user.
 
                     taxPercentagePayed: 10,2 // should be integer, but let
                      keep it scalable
@@ -337,25 +347,6 @@ module.exports.controller = function(app) {
                     companyId: PK on companyId but should not be deleted if 
                     the Company is deleted
                 */
-
-                for (var i = 0; i < cart.length; i++) {
-                  console.log(cart[i]);
-                  if (cart[i].id.indexOf('track') > -1) {
-                    // Move the track to the library
-                    cartToLibrary.push(
-                      moveTrackToLibrary(cart[i].id.split('-').pop(),
-                        userId));
-                  }
-                  if (cart[i].id.indexOf('release') > -1) {
-                    // Move the release to the library, by adding all the tracks
-                    // included in the release
-                    cartToLibrary.push(
-                      moveReleaseToLibrary(cart[i].id.split('-').pop(),
-                        userId));
-                  }
-                }
-
-
 
                 Q.all(cartToLibrary).then(function() {
                   res.send(charge);
