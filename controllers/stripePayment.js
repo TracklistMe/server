@@ -139,19 +139,9 @@ module.exports.controller = function(app) {
 
   function registerTrackTransaction(trackTransactionInfo) {
     var deferred = Q.defer();
-    model.Transaction.create({
-      ItemId: trackTransactionInfo.itemId,
-      originalPrice: trackTransactionInfo.originalPrice,
-      taxPercentagePayed: trackTransactionInfo.taxPercentagePayed,
-      taxAmountPayed: trackTransactionInfo.taxAmountPayed,
-      OriginalTransactionCurrencyId: trackTransactionInfo.originalTransactionCurrencyId,
-      transactionCost: trackTransactionInfo.transactionCost,
-      finalPrice: trackTransactionInfo.finalPrice,
-      stripeTransactionId: trackTransactionInfo.stripeTransactionId,
-      ReleaseId: trackTransactionInfo.ReleaseId, //trackTransactionInfo.ReleaseId,
-      LabelId: trackTransactionInfo.LabelId, //trackTransactionInfo.LabelId,
-      CompanyId: trackTransactionInfo.CompanyId
-    }).then(function(result) {
+    model.Transaction.create(
+      trackTransactionInfo
+    ).then(function(result) {
       deferred.resolve(result);
     });
     return deferred.promise;
@@ -219,7 +209,6 @@ module.exports.controller = function(app) {
             //it's only a track.
             tracks.push(results[r]);
           }
-          console.log(tracks.length);
         }
 
         var sumPrices = 0.0;
@@ -273,7 +262,6 @@ module.exports.controller = function(app) {
               },
             }, function(err, charge) {
 
-              console.log("-------- MOVE TO LIBRARY ---------")
               if (!err) {
                 // GOT IT ! 
 
@@ -290,12 +278,15 @@ module.exports.controller = function(app) {
                 // bought tracks to the library of the user
                 // RELEASE should be expanded into tracks.  
                 var cartToLibrary = [];
-                console.log("-------- Total tracks :  " + tracks.length)
+
                 for (var i = 0; i < tracks.length; i++) {
                   // this is calculated in the currency payed by the user
-                  var trackTaxAmountPayed = Math.ceil(100 * taxRate * tracks[i].trackConvertedPrice / 100) / 100;
+                  var trackTaxAmountPayed = Math.ceil(100 *
+                    taxRate *
+                    tracks[i].trackConvertedPrice / 100) / 100;
 
-                  var consumerCost = tracks[i].trackConvertedPrice + trackTaxAmountPayed;
+                  var consumerCost = tracks[i].trackConvertedPrice +
+                    trackTaxAmountPayed;
 
                   var ratioPayedOnTotal = consumerCost / charge.amount * 100;
 
@@ -309,31 +300,11 @@ module.exports.controller = function(app) {
                   // STEP 4: Create the transaction REPORT
                   // Pro Rata calculation:
                   // ProRata = TotalValue ITEMPRICE/TOTALPRICE
-                  // Multiply this by the number of tracks bought (tracks[i].quantity)
-                  for (var q = 0; q < tracks[i].quantity; q++) {
-                    cartToLibrary.push(
-                      registerTrackTransaction({
-                          itemId: tracks[i].trackId, //itemID
-                          // IN THE ORIGINAL CURRENCY 
-                          originalPrice: tracks[i].trackConvertedPrice * 100, //originalPrice 
-                          taxPercentagePayed: taxRate, // a percentage cross currencies
-                          taxAmountPayed: taxRate * tracks[i].trackConvertedPrice, //taxAmountPayed
-                          originalTransactionCurrencyId: currency.id, //originalTransactionCurrencyId
-                          // IN THE STRIPE CURRENCY FROM NOW ON
-                          transactionCost: Math.ceil(stripeFee * ratioPayedOnTotal * 100) / 100, //transactionCost
-                          finalPrice: Math.floor(stripeNet * ratioPayedOnTotal * 100) / 100, //finalPrice
-                          stripeTransactionId: charge.id, //stripeTransactionId
-                          ReleaseId: tracks[i].releaseId, //ReleaseId
-                          LabelId: tracks[i].labelId, //LabelId
-                          CompanyId: tracks[i].companyId
-                        } //CompanyId
-                      )
-                    );
-                  }
-                }
-                // STEP 4: Create the transaction REPORT 
-                //PART THAT ADS THE INFORMATION TO THE TRANSACTIONS LIBRARY.
-                /*id: PK, autoincrement
+                  // Multiply this by the number of tracks bought 
+                  // (tracks[i].quantity)
+                  // STEP 4: Create the transaction REPORT 
+                  //PART THAT ADS THE INFORMATION TO THE TRANSACTIONS LIBRARY.
+                  /*id: PK, autoincrement
                     itemId: PK on trackID but should not be deleted if the 
                     Track is deleted.
 
@@ -372,6 +343,27 @@ module.exports.controller = function(app) {
                     companyId: PK on companyId but should not be deleted if 
                     the Company is deleted
                 */
+                  for (var q = 0; q < tracks[i].quantity; q++) {
+                    cartToLibrary.push(
+                      registerTrackTransaction({
+                        ItemId: tracks[i].trackId, //itemID
+                        // IN THE ORIGINAL CURRENCY 
+                        originalPrice: tracks[i].trackConvertedPrice * 100,
+                        taxPercentagePayed: taxRate,
+                        taxAmountPayed: taxRate * tracks[i].trackConvertedPrice,
+                        OriginalTransactionCurrencyId: currency.id,
+                        // IN THE STRIPE CURRENCY FROM NOW ON
+                        transactionCost: Math.ceil(stripeFee * ratioPayedOnTotal * 100) / 100,
+                        finalPrice: Math.floor(stripeNet * ratioPayedOnTotal * 100) / 100,
+                        stripeTransactionId: charge.id,
+                        ReleaseId: tracks[i].releaseId,
+                        LabelId: tracks[i].labelId,
+                        CompanyId: tracks[i].companyId
+                      })
+                    );
+                  }
+                }
+
 
                 Q.all(cartToLibrary).then(function() {
                   res.send(charge);
