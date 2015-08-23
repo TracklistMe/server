@@ -18,6 +18,15 @@ module.exports.controller = function(app) {
       where: {
         id: idTrack
       },
+      include: [{
+        model: model.Release,
+        include: [{
+          model: model.Label,
+          include: [{
+            model: model.Company
+          }]
+        }]
+      }]
     }).then(function(track) {
       model.ConvertedPrice.find({
         where: {
@@ -27,15 +36,16 @@ module.exports.controller = function(app) {
       }).then(function(convertedPrice) {
         //Return an object that include trackId, releaseId, labelId, trackPrice,
         // trackConvertedPrice, CurrencyId.
-        var track = {
+        var trackObject = {
           trackId: idTrack,
-          releaseId: 0,
-          labelId: 0,
+          companyId: track.Releases[0].Labels[0].Companies[0].id,
+          releaseId: track.Releases[0].id,
+          labelId: track.Releases[0].Labels[0].id,
           trackConvertedPrice: convertedPrice.price,
           currencyId: idCurrency,
           quantity: quantity
         };
-        deferred.resolve(track);
+        deferred.resolve(trackObject);
       });
     });
     return deferred.promise;
@@ -54,10 +64,17 @@ module.exports.controller = function(app) {
       where: {
         id: idRelease
       },
-      include: {
+      include: [{
         model: model.Track,
         attributes: ['id', 'Price']
-      }
+      }, {
+        model: model.Label,
+        attributes: ['id'],
+        include: [{
+          model: model.Company,
+          attributes: ['id']
+        }]
+      }]
     }).then(function(release) {
       if (release.Price) {
         // A price for the release exists 
@@ -69,15 +86,15 @@ module.exports.controller = function(app) {
           }
         }).then(function(convertedPrice) {
           // The release has a special bundle cost.
-          // Distribute the price towards each track. 
-          console.log(convertedPrice.price, release.Tracks.length);
+          // Distribute the price towards each track.  
           var distributedCost = convertedPrice.price / release.Tracks.length;
           var tracksList = [];
           for (var i = 0; i < release.Tracks.length; i++) {
             var track = {
               trackId: release.Tracks[i].id,
               releaseId: idRelease,
-              labelId: 0, //TODO (bortignon@)
+              labelId: release.Labels[0].id,
+              companyId: release.Labels[0].Companies[0].id,
               trackConvertedPrice: distributedCost,
               currencyId: idCurrency,
               quantity: quantity
@@ -121,9 +138,23 @@ module.exports.controller = function(app) {
   }
 
   function registerTrackTransaction(trackTransactionInfo) {
-
-
-    console.log(trackTransactionInfo);
+    var deferred = Q.defer();
+    model.Transaction.create({
+      ItemId: trackTransactionInfo.itemId,
+      originalPrice: trackTransactionInfo.originalPrice,
+      taxPercentagePayed: trackTransactionInfo.taxPercentagePayed,
+      taxAmountPayed: trackTransactionInfo.taxAmountPayed,
+      OriginalTransactionCurrencyId: trackTransactionInfo.originalTransactionCurrencyId,
+      transactionCost: trackTransactionInfo.transactionCost,
+      finalPrice: trackTransactionInfo.finalPrice,
+      stripeTransactionId: trackTransactionInfo.stripeTransactionId,
+      ReleaseId: trackTransactionInfo.ReleaseId, //trackTransactionInfo.ReleaseId,
+      LabelId: trackTransactionInfo.LabelId, //trackTransactionInfo.LabelId,
+      CompanyId: trackTransactionInfo.CompanyId
+    }).then(function(result) {
+      deferred.resolve(result);
+    });
+    return deferred.promise;
   }
 
 
@@ -133,15 +164,15 @@ module.exports.controller = function(app) {
    * 1) Recalculate the price on the server side
    *    1A) Convert the Tracklistme Price into the Currency price
    *    1B) Aggregate costs
-   * 
+   *
    * 2) Create the transaction for Stripe
    *
    * 3) if 2), move all the tracks in the user Library. Release are expanded,
-   * and the tracks that belong to them added one by one. Tracks that was 
-   * already purcheased are update.  
+   * and the tracks that belong to them added one by one. Tracks that was
+   * already purcheased are update.
    *
-   * 4) Create the transaction report.   
-   *  
+   * 4) Create the transaction report.
+   *
    */
   app.post('/payments',
     authenticationUtils.ensureAuthenticated,
@@ -182,10 +213,10 @@ module.exports.controller = function(app) {
         var tracks = [];
         for (var r = 0; r < results.length; r++) {
           if (results[r].constructor === Array) {
-            console.log("array")
+            //it's a full array of tracks
             tracks = tracks.concat(results[r]);
           } else {
-            console.log("traccia")
+            //it's only a track.
             tracks.push(results[r]);
           }
           console.log(tracks.length);
@@ -196,22 +227,17 @@ module.exports.controller = function(app) {
         var finalAmount = 0.0;
         for (var r = 0; r < tracks.length; r++) {
           // multiply by quantity
-          console.log("++++++++");
-          console.log(tracks[r]);
           sumPrices += (tracks[r].trackConvertedPrice * tracks[r].quantity);
         }
 
         // calculate the total taxes on the final amount
-        console.log(sumPrices);
         totalTaxToPay = (sumPrices * (taxRate) / 100).toFixed(2);
-        console.log(totalTaxToPay);
+
         // update the final billable amount
         finalAmount = parseInt(sumPrices * 100) +
           parseInt(totalTaxToPay * 100);
-        //Multiply by 100.
 
 
-        console.log('FINAL PRICE ' + finalAmount);
         // Validate if the userId is a valid user
         // Todo(bortignon@):  we may want to prevent a user to purchease if 
         // he hasn't confirm his account now OR if has been tracked as malevolus
@@ -235,7 +261,6 @@ module.exports.controller = function(app) {
             source: token,
             email: user.email
           }).then(function(customer) {
-            console.log('CUSTOMER RECEIVED ');
 
             stripe.charges.create({
               amount: finalAmount,
@@ -247,8 +272,7 @@ module.exports.controller = function(app) {
                 // a TRANSACTION ID in our db
               },
             }, function(err, charge) {
-              console.log(charge);
-              console.log(charge.balance_transaction);
+
               console.log("-------- MOVE TO LIBRARY ---------")
               if (!err) {
                 // GOT IT ! 
@@ -266,16 +290,16 @@ module.exports.controller = function(app) {
                 // bought tracks to the library of the user
                 // RELEASE should be expanded into tracks.  
                 var cartToLibrary = [];
+                console.log("-------- Total tracks :  " + tracks.length)
                 for (var i = 0; i < tracks.length; i++) {
-                  var trackTaxAmountPayed = Math.round(100 * taxRate * tracks[i].trackConvertedPrice / 100) / 100;
+                  // this is calculated in the currency payed by the user
+                  var trackTaxAmountPayed = Math.ceil(100 * taxRate * tracks[i].trackConvertedPrice / 100) / 100;
 
                   var consumerCost = tracks[i].trackConvertedPrice + trackTaxAmountPayed;
 
-                  var radioPayedOnTotal = consumerCost / charge.amount * 100;
-                  console.log(radioPayedOnTotal)
-                  console.log(Math.round((taxRate * tracks[i].trackConvertedPrice) + 100 * tracks[i].trackConvertedPrice) / 100)
-                  console.log("RATIO TRACK/TOTAL " + (charge.amount / 100))
-                    // STEP 3: MOVE TRACKS TO USER LIBRARY
+                  var ratioPayedOnTotal = consumerCost / charge.amount * 100;
+
+                  // STEP 3: MOVE TRACKS TO USER LIBRARY
                   cartToLibrary.push(
                     moveTrackToLibrary(
                       tracks[i].trackId,
@@ -285,26 +309,27 @@ module.exports.controller = function(app) {
                   // STEP 4: Create the transaction REPORT
                   // Pro Rata calculation:
                   // ProRata = TotalValue ITEMPRICE/TOTALPRICE
-
-                  cartToLibrary.push(
-                    registerTrackTransaction({
-                        itemId: tracks[i].trackId, //itemID
-                        // IN THE ORIGINAL CURRENCY 
-                        originalPrice: tracks[i].trackConvertedPrice, //originalPrice 
-                        taxPercentagePayed: taxRate, // a percentage cross currencies
-                        taxAmountPayed: taxRate * tracks[i].trackConvertedPrice / 100, //taxAmountPayed
-                        originalTransactionCurrencyId: currency.id, //originalTransactionCurrencyId
-                        // IN THE STRIPE CURRENCY FROM NOW ON
-                        transactionCost: stripeFee * (tracks[i].trackConvertedPrice / (charge.amount / 100)), //transactionCost
-                        finalPrice: stripeNet * (tracks[i].trackConvertedPrice / (charge.amount / 100)), //finalPrice
-                        stripeTransactionId: charge.id, //stripeTransactionId
-                        ReleaseId: tracks[i].releaseId, //ReleaseId
-                        LabelId: tracks[i].labelId, //LabelId
-                        CompanyId: 0
-                      } //CompanyId
-                    )
-                  );
-
+                  // Multiply this by the number of tracks bought (tracks[i].quantity)
+                  for (var q = 0; q < tracks[i].quantity; q++) {
+                    cartToLibrary.push(
+                      registerTrackTransaction({
+                          itemId: tracks[i].trackId, //itemID
+                          // IN THE ORIGINAL CURRENCY 
+                          originalPrice: tracks[i].trackConvertedPrice * 100, //originalPrice 
+                          taxPercentagePayed: taxRate, // a percentage cross currencies
+                          taxAmountPayed: taxRate * tracks[i].trackConvertedPrice, //taxAmountPayed
+                          originalTransactionCurrencyId: currency.id, //originalTransactionCurrencyId
+                          // IN THE STRIPE CURRENCY FROM NOW ON
+                          transactionCost: Math.ceil(stripeFee * ratioPayedOnTotal * 100) / 100, //transactionCost
+                          finalPrice: Math.floor(stripeNet * ratioPayedOnTotal * 100) / 100, //finalPrice
+                          stripeTransactionId: charge.id, //stripeTransactionId
+                          ReleaseId: tracks[i].releaseId, //ReleaseId
+                          LabelId: tracks[i].labelId, //LabelId
+                          CompanyId: tracks[i].companyId
+                        } //CompanyId
+                      )
+                    );
+                  }
                 }
                 // STEP 4: Create the transaction REPORT 
                 //PART THAT ADS THE INFORMATION TO THE TRANSACTIONS LIBRARY.
