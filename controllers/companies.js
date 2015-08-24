@@ -1,7 +1,7 @@
 'use strict';
 
 var fs = require('fs-extra');
-
+var moment = require('moment');
 var imagesController = rootRequire('controllers/images');
 var helper = rootRequire('helpers/companies');
 var fileUtils = rootRequire('utils/file-utils');
@@ -30,7 +30,7 @@ module.exports.controller = function(app) {
     });
 
   /*
-   * GET /companies/   
+   * GET /companies/
    * Return list of all the companies
    * TODO: paginate request
    */
@@ -43,7 +43,7 @@ module.exports.controller = function(app) {
     });
 
   /**
-   * POST /companies/   
+   * POST /companies/
    * Add a new company, returns all the companies
    */
   app.post('/companies/',
@@ -62,7 +62,7 @@ module.exports.controller = function(app) {
     });
 
   /**
-   * GET /companies/id/labels   
+   * GET /companies/id/labels
    * Return all the labels owned by a given company
    */
   app.get('/companies/:id/labels',
@@ -85,10 +85,10 @@ module.exports.controller = function(app) {
     });
 
   /**
-   * GET /companies/id   
-   * Return the company with id passed as part of the path. An empty object if 
+   * GET /companies/id
+   * Return the company with id passed as part of the path. An empty object if
    * no company exists.
-   * This endpoint is limited to admin only. We may consider at some point to 
+   * This endpoint is limited to admin only. We may consider at some point to
    * release a lighter way for having an all user access (for promo proposal)
    */
   app.get('/companies/:id',
@@ -115,7 +115,7 @@ module.exports.controller = function(app) {
     });
 
   /**
-   * PUT /companies/id   
+   * PUT /companies/id
    * Update the company with given Id and return the updated company
    */
   app.put('/companies/:id',
@@ -137,7 +137,7 @@ module.exports.controller = function(app) {
     });
 
   /*
-   * DELETE /companies/:idCompany/owners/:idUser 
+   * DELETE /companies/:idCompany/owners/:idUser
    * Delete the owner with id = idUser from the owners of the company with
    * id = idCompany
    */
@@ -207,7 +207,7 @@ module.exports.controller = function(app) {
     });
 
   /**
-   * POST /companies/:companyId/profilePicture/:width/:height   
+   * POST /companies/:companyId/profilePicture/:width/:height
    * Add a profile picture for the company
    */
   app.post('/companies/:companyId/profilePicture/:width/:height/',
@@ -249,6 +249,52 @@ module.exports.controller = function(app) {
       });
     });
 
+
+  /**
+   * API FOR FETCHING REPORTS
+   * All dates are expressed in MM-DD-YYYY
+   */
+
+
+
+
+  app.get('/companies/:id/revenues/:startDate/:endDate',
+    //   authenticationUtils.ensureAuthenticated, authenticationUtils.ensureAdmin,
+    function(req, res) {
+      var startDate = req.params.startDate;
+      var endDate = req.params.endDate;
+      console.log(startDate)
+      console.log(isValidDate(startDate));
+      if (startDate && isValidDate(startDate)) {
+        //startDate is valid
+        startDate = moment(startDate, 'DD-MM-YYYY').format();
+        console.log(startDate);
+        if (endDate && isValidDate(endDate)) {
+          //end Date is Valid
+          endDate = moment(endDate, 'DD-MM-YYYY').format();
+        } else {
+          endDate = moment().utcOffset(0).format();
+        }
+      } else {
+        startDate = moment().startOf('quarter').format();
+        //CloudSQL date is different that Cloud Engine 
+        endDate = moment().utcOffset(0).format();
+        console.log(endDate);
+        // reset both startDate and endDate
+      }
+      var companyId = req.params.id;
+      model.Transaction.findAll({
+        where: {
+          CompanyId: companyId,
+          createdAt: {
+            $between: [startDate, endDate],
+          }
+        }
+      }).then(function(results) {
+        res.send(results);
+      });
+    });
+
   /**
    * POST '/labels/:labelId/profilePicture/createFile'
    * Request a CDN policy to upload a new profile picture, if an update was
@@ -275,5 +321,20 @@ module.exports.controller = function(app) {
    */
   app.get('/companies/:companyId/profilePicture/:size(small|medium|large)',
     imagesController.getImageFactory('logo', helper));
+
+
+  function isValidDate(date) {
+    var matches = /^(\d{2})[-\/](\d{2})[-\/](\d{4})$/.exec(date);
+    if (matches == null) return false;
+    var d = matches[2];
+    var m = matches[1] - 1;
+    var y = matches[3];
+
+    var composedDate = new Date(y, m, d);
+    return composedDate.getDate() == d &&
+      composedDate.getMonth() == m &&
+      composedDate.getFullYear() == y;
+  }
+
 
 }; /* End of companies controller */
