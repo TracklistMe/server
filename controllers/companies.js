@@ -286,14 +286,21 @@ module.exports.controller = function(app) {
       }
       var companyId = req.params.id;
       model.Transaction.findAll({
-        attributes: ['LabelId', [Sequelize.fn('SUM', Sequelize.col('finalPrice')), 'price']],
+        attributes: ['LabelId', [Sequelize.fn('DATE_FORMAT', Sequelize.col('Transaction.createdAt'), '%d/%m/%y'), 'dataColumn'],
+          [Sequelize.fn('SUM', Sequelize.col('finalPrice')), 'price']
+        ],
+        include: [{
+          model: model.Label,
+          attributes: ['displayName']
+        }],
         where: {
           CompanyId: companyId,
           createdAt: {
             $between: [startDate, endDate],
           }
         },
-        group: ['Transaction.LabelId']
+        order: 'Transaction.createdAt',
+        group: ['Transaction.LabelId', 'Transaction.createdAt']
       }).then(function(results) {
         console.log(results)
         res.send(results);
