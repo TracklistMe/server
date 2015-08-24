@@ -10,6 +10,8 @@ var model = rootRequire('models/model');
 var cloudstorage = rootRequire('libs/cdn/cloudstorage');
 
 module.exports.controller = function(app) {
+  var Sequelize = model.sequelize();
+
 
   /**
    * GET /companies/search/
@@ -284,13 +286,16 @@ module.exports.controller = function(app) {
       }
       var companyId = req.params.id;
       model.Transaction.findAll({
+        attributes: ['LabelId', [Sequelize.fn('SUM', Sequelize.col('finalPrice')), 'price']],
         where: {
           CompanyId: companyId,
           createdAt: {
             $between: [startDate, endDate],
           }
-        }
+        },
+        group: ['Transaction.LabelId']
       }).then(function(results) {
+        console.log(results)
         res.send(results);
       });
     });
@@ -324,7 +329,7 @@ module.exports.controller = function(app) {
 
 
   function isValidDate(date) {
-    var matches = /^(\d{2})[-\/](\d{2})[-\/](\d{4})$/.exec(date);
+    var matches = /^(\d{2})[-](\d{2})[-](\d{4})$/.exec(date);
     if (matches == null) return false;
     var d = matches[2];
     var m = matches[1] - 1;
