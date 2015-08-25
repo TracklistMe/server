@@ -260,20 +260,21 @@ module.exports.controller = function(app) {
 
 
 
-  app.get('/companies/:id/revenues/:startDate/:endDate',
+  app.get('/companies/:id/revenues/:startDate?/:endDate?',
     //   authenticationUtils.ensureAuthenticated, authenticationUtils.ensureAdmin,
     function(req, res) {
-      var startDate = req.params.startDate;
-      var endDate = req.params.endDate;
-      console.log(startDate)
-      console.log(isValidDate(startDate));
-      if (startDate && isValidDate(startDate)) {
+      console.log(req.params.startDate);
+      var startDate = moment(req.params.startDate, "DD-MM-YYYY", true);
+      var endDate = moment(req.params.endDate, "DD-MM-YYYY", true);
+
+      console.log("IS VALID: " + startDate.isValid());
+      if (startDate && startDate.isValid()) {
         //startDate is valid
-        startDate = moment(startDate, 'DD-MM-YYYY').format();
+        startDate = startDate.format();
         console.log(startDate);
         if (endDate && isValidDate(endDate)) {
           //end Date is Valid
-          endDate = moment(endDate, 'DD-MM-YYYY').format();
+          endDate = endDate.format();
         } else {
           endDate = moment().utcOffset(0).format();
         }
@@ -286,7 +287,8 @@ module.exports.controller = function(app) {
       }
       var companyId = req.params.id;
       model.Transaction.findAll({
-        attributes: ['LabelId', [Sequelize.fn('DATE_FORMAT', Sequelize.col('Transaction.createdAt'), '%d/%m/%y'), 'dataColumn'],
+        attributes: ['LabelId', [Sequelize.fn('DATE_FORMAT',
+            Sequelize.col('Transaction.createdAt'), '%d/%m/%y'), 'dataColumn'],
           [Sequelize.fn('SUM', Sequelize.col('finalPrice')), 'price']
         ],
         include: [{
@@ -302,7 +304,6 @@ module.exports.controller = function(app) {
         order: 'Transaction.createdAt',
         group: ['Transaction.LabelId', 'Transaction.createdAt']
       }).then(function(results) {
-        console.log(results)
         res.send(results);
       });
     });
