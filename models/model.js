@@ -594,65 +594,93 @@ User.belongsTo(Currency, {
  */
 
 // User <--> Company
-User.belongsToMany(Company);
-Company.belongsToMany(User);
+User.belongsToMany(Company, {
+  through: 'CompaniesUsers'
+});
+Company.belongsToMany(User, {
+  through: 'CompaniesUsers'
+});
 
 // Label <--> Company
-Company.belongsToMany(Label);
-Label.belongsToMany(Company);
+Company.belongsToMany(Label, {
+  through: 'CompaniesLabels'
+});
+Label.belongsToMany(Company, {
+  through: 'CompaniesLabels'
+});
 
 // User <--> Labels
-User.hasMany(Label);
-Label.hasMany(User);
+User.belongsToMany(Label, {
+  through: 'LabelsUsers'
+});
+Label.belongsToMany(User, {
+  through: 'LabelsUsers'
+});
 
 // Label <--> DropZoneFile
-DropZoneFile.belongsToMany(Label);
-Label.belongsToMany(DropZoneFile);
+DropZoneFile.belongsToMany(Label, {
+  through: 'DropZoneFilesLabels'
+});
+Label.belongsToMany(DropZoneFile, {
+  through: 'DropZoneFilesLabels'
+});
 
 // Label <--> Releases
-Release.belongsToMany(Label);
-Label.belongsToMany(Release);
+Release.belongsToMany(Label, {
+  through: 'LabelsReleases'
+});
+Label.belongsToMany(Release, {
+  through: 'LabelsReleases'
+});
 
 // Release <--> Tracks 
 var ReleaseTracks = sequelizeObject.define('ReleaseTracks', {
   position: Sequelize.INTEGER
 });
 
-Track.hasMany(Release, {
+Track.belongsToMany(Release, {
   through: ReleaseTracks
 });
 
-Release.hasMany(Track, {
+Release.belongsToMany(Track, {
   through: ReleaseTracks
 });
 
 // Artist <--> Tracks (Producer)
 var ProducerTracks = sequelizeObject.define('ArtistTracks', {});
-Artist.hasMany(Track, {
+Artist.belongsToMany(Track, {
   through: ProducerTracks
 });
-Track.hasMany(Artist, {
+Track.belongsToMany(Artist, {
   as: 'Producer',
   through: ProducerTracks
 });
 
 // Artist <--> Tracks (Remixer)
 var RemixerTracks = sequelizeObject.define('RemixerTracks', {});
-Artist.hasMany(Track, {
+Artist.belongsToMany(Track, {
   through: RemixerTracks
 });
-Track.hasMany(Artist, {
+Track.belongsToMany(Artist, {
   as: 'Remixer',
   through: RemixerTracks
 });
 
 // User <--> Artists
-User.belongsToMany(Artist);
-Artist.belongsToMany(User);
+User.belongsToMany(Artist, {
+  through: 'ArtistsUsers'
+});
+Artist.belongsToMany(User, {
+  through: 'ArtistsUsers'
+});
 
 // Genre <--> Tracks
-Track.belongsToMany(Genre);
-Genre.belongsToMany(Track);
+Track.belongsToMany(Genre, {
+  through: 'GenresTracks'
+});
+Genre.belongsToMany(Track, {
+  through: 'GenresTracks'
+});
 
 /**
  * Create database and default entities if do not exist
