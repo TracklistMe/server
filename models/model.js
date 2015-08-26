@@ -464,7 +464,7 @@ var Transaction = sequelizeObject.define('Transaction', {
   // Stripe currency (originalPrice - transactionCost - tax)
   finalPrice: Sequelize.DECIMAL(10, 2),
   // Stripe id for the transaction
-  stripeTransactionId: Sequelize.STRING
+  merchantTransactionId: Sequelize.STRING
 });
 
 Transaction.belongsTo(Track, {
@@ -486,6 +486,14 @@ Track.hasMany(Transaction, {
 Transaction.belongsTo(Currency, {
   foreignKey: {
     name: 'OriginalTransactionCurrencyId',
+    allowNull: false
+  },
+  onDelete: 'RESTRICT'
+});
+
+Transaction.belongsTo(Currency, {
+  foreignKey: {
+    name: 'MerchantTransactionCurrencyId',
     allowNull: false
   },
   onDelete: 'RESTRICT'
