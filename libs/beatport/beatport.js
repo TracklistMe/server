@@ -221,7 +221,7 @@ function packRelease(xmlPath, idLabel) {
               title: resultXML.release.releaseTitle[0],
               cover: cdnCover,
               catalogNumber: resultXML.release.catalogNumber[0],
-              status: 'PROCESSING',
+              status: 'TO_BE_PROCESSED',
               metadataFile: xmlPath
                 /*
                 ADD CLOUD LINK TO the cover image 
@@ -261,7 +261,7 @@ function packRelease(xmlPath, idLabel) {
                         path: cdnCover
                       }
                     }).then(function(file) {
-                      file.status = 'PROCESSING';
+                      file.status = 'TO_BE_PROCESSED';
                       def.resolve();
                       file.save();
 
@@ -280,7 +280,7 @@ function packRelease(xmlPath, idLabel) {
                         path: xmlPath
                       }
                     }).then(function(file) {
-                      file.status = 'PROCESSING';
+                      file.status = 'TO_BE_PROCESSED';
                       def.resolve();
                       file.save();
                       // ULTIMA CHIAMATA 
@@ -386,7 +386,7 @@ function addTrack(trackObject, release, idLabel) {
                 path: cdnPATH
               }
             }).then(function(file) {
-              file.status = 'PROCESSING';
+              file.status = 'TO_BE_PROCESSED';
               file.save().then(function(file) {
                 console.log(
                   'Resolve the main promise for this track: ' +
