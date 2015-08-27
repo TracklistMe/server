@@ -358,7 +358,7 @@ module.exports.controller = function(app) {
 
     model.Release.findAll({
       where: {
-        isActive: 1
+        isActive: true
       },
       order: 'position',
       include: [{
@@ -456,6 +456,7 @@ module.exports.controller = function(app) {
           }
         }).then(function(newRelease) {
           // newRelease is the current release 
+          release.status = model.ReleaseStatus.TO_BE_PROCESSED;
           newRelease.updateAttributes(release);
           var trackUpdatePromises = [];
           for (var i = release.Tracks.length - 1; i >= 0; i--) {
@@ -493,9 +494,11 @@ module.exports.controller = function(app) {
                       }
                       // Accept an array of promises functions. 
                       // Call the done when all are successful
+                      track.status = model.TrackStatus.TO_BE_PROCESSED;
                       Q.all([
                         track.setRemixer(newRemixers),
-                        track.setProducer(newProducers)
+                        track.setProducer(newProducers),
+                        track.save()
                       ]).done(function() {
                         deferred.resolve();
                       });
@@ -525,7 +528,11 @@ module.exports.controller = function(app) {
               results.forEach(function() {
                 console.log('Update Track Request Done');
               });
-              consolideJSON(releaseId);
+              consolideJSON(releaseId).then(function(jsonRelease) {
+                console.log('===LOGGING RELEASE IN JSON FORMAT====');
+                console.log(jsonRelease);
+              });
+              //rabbitmq.sendReleaseToProcess(release);
               res.send(results);
             });
         });
