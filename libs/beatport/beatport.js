@@ -37,7 +37,7 @@ function validate(xmlArrayList) {
     .then(function(results) {
       results.forEach(function(result) {
         if (result.value.status === CORRECT) {
-          processResults.success.push(result.value);
+          processResults.then.push(result.value);
         } else {
           processResults.fail.push(result.value);
         }
@@ -119,27 +119,27 @@ function validateFile(xmlPath) {
           // array, so if you can access a variable, try to att [0] at the end
           // CHECK IF THE COVER IS AVAILABLE
           //console.log(util.inspect(result, false, null))
-          var coverFileName = 
+          var coverFileName =
             result.release.coverArtFilename[0].split('.')[0];
-          var coverExtension = 
+          var coverExtension =
             result.release.coverArtFilename[0].split('.')[1];
           //console.log(result.release.tracks[0].track)
           var allAndObjects = [];
           var orObject = model.Sequelize.or();
           // ADD THE COVER 
           allAndObjects.push(model.Sequelize.and({
-              fileName: coverFileName
-            }, {
-              extension: coverExtension
-            }));
+            fileName: coverFileName
+          }, {
+            extension: coverExtension
+          }));
           // ADD ALL THE OTHER TRACKS
           for (var j = 0; j < result.release.tracks[0].track.length; j++) {
-            var fileName = 
+            var fileName =
               result.release.tracks[0].track[j].trackAudioFile[0].
-                audioFilename[0].split('.')[0];
-            var extension = 
+            audioFilename[0].split('.')[0];
+            var extension =
               result.release.tracks[0].track[j].trackAudioFile[0].
-                audioFilename[0].split('.')[1];
+            audioFilename[0].split('.')[1];
             var andObject = model.Sequelize.and({
               fileName: fileName
             }, {
@@ -213,9 +213,9 @@ function packRelease(xmlPath, idLabel) {
             }
           }).then(function(label) {
             // CREATE THE RELEASE 
-            var cdnCover = 
-              'dropZone/' + 
-              idLabel + '/' + 
+            var cdnCover =
+              'dropZone/' +
+              idLabel + '/' +
               resultXML.release.coverArtFilename[0];
             model.Release.create({
               title: resultXML.release.releaseTitle[0],
@@ -223,14 +223,14 @@ function packRelease(xmlPath, idLabel) {
               catalogNumber: resultXML.release.catalogNumber[0],
               status: 'PROCESSING',
               metadataFile: xmlPath
-              /*
-              ADD CLOUD LINK TO the cover image 
-              UPC: result.release.UPC_EAN[0] || null,
-              GRid: result.release.GRid[0] || null,
-              description: result.release.description[0] || null,
-              type: result.release.releaseSalesType[0]|| null 
-              */
-            }).success(function(release) {
+                /*
+                ADD CLOUD LINK TO the cover image 
+                UPC: result.release.UPC_EAN[0] || null,
+                GRid: result.release.GRid[0] || null,
+                description: result.release.description[0] || null,
+                type: result.release.releaseSalesType[0]|| null 
+                */
+            }).then(function(release) {
               // TRANSFER ALL FILES
 
               var promises = [];
@@ -241,17 +241,15 @@ function packRelease(xmlPath, idLabel) {
               label.addReleases(release).then(function() {
 
                 for (
-                  var j = 0; 
-                  j < resultXML.release.tracks[0].track.length; 
-                  j++) {
-                    promises.push(
-                      wrapFunction(
-                        addTrack, 
-                        this, 
-                        [
-                          resultXML.release.tracks[0].track[j], 
-                          release, 
-                          idLabel]));
+                  var j = 0; j < resultXML.release.tracks[0].track.length; j++) {
+                  promises.push(
+                    wrapFunction(
+                      addTrack,
+                      this, [
+                        resultXML.release.tracks[0].track[j],
+                        release,
+                        idLabel
+                      ]));
                 }
 
                 // Temporarily disable cover in dropzone 
@@ -349,7 +347,7 @@ function addTrack(trackObject, release, idLabel) {
     path: cdnPATH
   }).error(function(err) {
     console.log(err);
-  }).success(function(track) {
+  }).then(function(track) {
 
     release.addTrack(track, {
       position: trackObject.trackNumber[0]
@@ -357,16 +355,14 @@ function addTrack(trackObject, release, idLabel) {
       var artistInsertion = [];
       artistInsertion.push(
         wrapFunction(
-          addGenre, 
-          this, 
-          [trackObject.trackGenre, track]));
+          addGenre,
+          this, [trackObject.trackGenre, track]));
       for (var j = 0; j < trackObject.trackArtists[0].artistName.length; j++) {
         console.log('----- Call Insertion of Artist for this track ');
         artistInsertion.push(
           wrapFunction(
-            addArtist, 
-            this, 
-            [trackObject.trackArtists[0].artistName[j], track]));
+            addArtist,
+            this, [trackObject.trackArtists[0].artistName[j], track]));
       }
 
       if (trackObject.trackRemixers) {
@@ -374,9 +370,8 @@ function addTrack(trackObject, release, idLabel) {
           console.log('----- Call Insertion of Remixes for this track ');
           artistInsertion.push(
             wrapFunction(
-              addRemixer, 
-              this, 
-              [trackObject.trackRemixers[0].remixerName[j], track]));
+              addRemixer,
+              this, [trackObject.trackRemixers[0].remixerName[j], track]));
         }
       }
 
@@ -390,11 +385,11 @@ function addTrack(trackObject, release, idLabel) {
               where: {
                 path: cdnPATH
               }
-            }).on('success', function(file) {
+            }).on('then', function(file) {
               file.status = 'PROCESSING';
-              file.save().on('success', function() {
+              file.save().on('then', function() {
                 console.log(
-                  'Resolve the main promise for this track: ' + 
+                  'Resolve the main promise for this track: ' +
                   trackObject.trackNumber[0]);
                 def.resolve();
               });
