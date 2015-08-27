@@ -37,7 +37,7 @@ function validate(xmlArrayList) {
     .then(function(results) {
       results.forEach(function(result) {
         if (result.value.status === CORRECT) {
-          processResults.then.push(result.value);
+          processResults.success.push(result.value);
         } else {
           processResults.fail.push(result.value);
         }
@@ -385,9 +385,9 @@ function addTrack(trackObject, release, idLabel) {
               where: {
                 path: cdnPATH
               }
-            }).on('then', function(file) {
+            }).then(function(file) {
               file.status = 'PROCESSING';
-              file.save().on('then', function() {
+              file.save().then(function(file) {
                 console.log(
                   'Resolve the main promise for this track: ' +
                   trackObject.trackNumber[0]);
