@@ -896,8 +896,13 @@ module.exports.controller = function(app) {
       });
     });
 
-
-  app.get('/labels/:id/revenues/:startDate?/:endDate?',
+  /*
+    Label's revenues, with filtering possibility, reported in expanded version
+    (that is grouped by Same Release and Same day).
+    If not startDate or endDate is provided it does return the amount for the 
+    last quarter
+  */
+  app.get('/labels/:id/revenues/expanded/:startDate?/:endDate?',
     //   authenticationUtils.ensureAuthenticated, authenticationUtils.ensureAdmin,
     function(req, res) {
       console.log(req.params.startDate);
@@ -949,6 +954,55 @@ module.exports.controller = function(app) {
       });
     });
 
+  /*
+    The total label's revenues, with possibility to filter by date.
+  */
+  app.get('/labels/:id/revenues/total/:startDate?/:endDate?',
+    //   authenticationUtils.ensureAuthenticated, authenticationUtils.ensureAdmin,
+    function(req, res) {
+      console.log(req.params.startDate);
+      var startDate = moment(req.params.startDate, "DD-MM-YYYY", true);
+      var endDate = moment(req.params.endDate, "DD-MM-YYYY", true).endOf('day');
+
+      console.log("IS VALID: " + startDate.isValid());
+      if (startDate && startDate.isValid()) {
+        //startDate is valid
+        startDate = startDate.format();
+
+        console.log(endDate + "enddate")
+        console.log(endDate.isValid())
+        if (endDate && endDate.isValid()) {
+          //end Date is Valid
+          console.log("SO I FORMAT")
+          endDate = endDate.format();
+          console.log(endDate)
+        } else {
+          endDate = moment().utcOffset(0).format();
+        }
+      } else {
+        startDate = moment().startOf('quarter').format();
+        //CloudSQL date is different that Cloud Engine 
+        endDate = moment().utcOffset(0).format();
+        console.log(endDate);
+        // reset both startDate and endDate
+      }
+      var labelId = req.params.id;
+      model.Transaction.findAll({
+        attributes: [
+          [Sequelize.fn('SUM', Sequelize.col('finalPrice')), 'price']
+        ],
+
+        where: {
+          LabelId: labelId,
+          createdAt: {
+            $between: [startDate, endDate],
+          }
+        },
+        group: ['labelId']
+      }).then(function(results) {
+        res.send(results);
+      });
+    });
 
   /**
    * POST '/labels/:labelId/profilePicture/createFile'
