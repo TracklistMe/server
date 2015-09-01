@@ -207,7 +207,7 @@ function packRelease(xmlPath, idLabel) {
           console.log(xml)
       })
       */
-      fs.readFile(filename, 'utf8', function(err, data) {
+      fs.readFile(temporaryFilename, 'utf8', function(err, data) {
         if (err) {
           deferred.reject(err);
           return;
