@@ -355,8 +355,9 @@ module.exports.controller = function(app) {
                         // IN THE STRIPE CURRENCY FROM NOW ON
                         transactionCost: Math.ceil(stripeFee * ratioPayedOnTotal * 100) / 100,
                         finalPrice: Math.floor(stripeNet * ratioPayedOnTotal * 100) / 100,
-                        stripeTransactionId: charge.id,
+                        merchantTransactionId: charge.id,
                         ReleaseId: tracks[i].releaseId,
+                        MerchantTransactionCurrencyId: 3, //GBP for now
                         LabelId: tracks[i].labelId,
                         CompanyId: tracks[i].companyId
                       })

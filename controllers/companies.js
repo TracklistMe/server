@@ -259,13 +259,15 @@ module.exports.controller = function(app) {
 
 
 
-
-  app.get('/companies/:id/revenues/:startDate?/:endDate?',
+  /*
+    The total label's revenues, with possibility to filter by date.
+  */
+  app.get('/companies/:id/revenues/expanded/:startDate?/:endDate?',
     //   authenticationUtils.ensureAuthenticated, authenticationUtils.ensureAdmin,
     function(req, res) {
       console.log(req.params.startDate);
       var startDate = moment(req.params.startDate, "DD-MM-YYYY", true);
-      var endDate = moment(req.params.endDate, "DD-MM-YYYY", true);
+      var endDate = moment(req.params.endDate, "DD-MM-YYYY", true).endOf('day');
 
       console.log("IS VALID: " + startDate.isValid());
       if (startDate && startDate.isValid()) {
@@ -301,8 +303,8 @@ module.exports.controller = function(app) {
             $between: [startDate, endDate],
           }
         },
-        order: 'Transaction.createdAt',
-        group: ['Transaction.LabelId', 'Transaction.createdAt']
+        order: 'dataColumn',
+        group: ['Transaction.LabelId', 'dataColumn']
       }).then(function(results) {
         res.send(results);
       });

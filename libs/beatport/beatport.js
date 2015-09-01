@@ -121,10 +121,11 @@ function validateFile(xmlPath) {
           // array, so if you can access a variable, try to att [0] at the end
           // CHECK IF THE COVER IS AVAILABLE
           //console.log(util.inspect(result, false, null))
+
           // TODO this splitting might be wrong if the filename has dots in it
           var coverFileName = 
             result.release.coverArtFilename[0].split('.')[0];
-          var coverExtension = 
+          var coverExtension =
             result.release.coverArtFilename[0].split('.')[1];
           //console.log(result.release.tracks[0].track)
           var allAndObjects = [];
@@ -138,12 +139,12 @@ function validateFile(xmlPath) {
             }));
           // ADD ALL THE OTHER TRACKS
           for (var j = 0; j < result.release.tracks[0].track.length; j++) {
-            var fileName = 
+            var fileName =
               result.release.tracks[0].track[j].trackAudioFile[0].
-                audioFilename[0].split('.')[0];
-            var extension = 
+            audioFilename[0].split('.')[0];
+            var extension =
               result.release.tracks[0].track[j].trackAudioFile[0].
-                audioFilename[0].split('.')[1];
+            audioFilename[0].split('.')[1];
             var andObject = model.Sequelize.and({
                 fileName: fileName
               }, {
@@ -323,9 +324,8 @@ function addTrack(trackObject, release, idLabel) {
           console.log('----- Call Insertion of Remixes for this track ');
           artistInsertion.push(
             wrapFunction(
-              addRemixer, 
-              this, 
-              [trackObject.trackRemixers[0].remixerName[j], track]));
+              addRemixer,
+              this, [trackObject.trackRemixers[0].remixerName[j], track]));
         }
       }
 
@@ -352,7 +352,7 @@ function disableDropZoneFile(cdnPath) {
     }
   }).then(function(file) {
     if (file) {
-      file.status = 'PROCESSING';
+      file.status = 'TO_BE_PROCESSED';
       file.save().then(function() {
         def.resolve();
       });

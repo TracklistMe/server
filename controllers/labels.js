@@ -2,6 +2,7 @@
 
 var fs = require('fs-extra');
 
+var moment = require('moment');
 var imagesController = rootRequire('controllers/images');
 var helper = rootRequire('helpers/labels');
 var authenticationUtils = rootRequire('utils/authentication-utils');
@@ -11,7 +12,7 @@ var beatport = rootRequire('libs/beatport/beatport');
 var rabbitmq = rootRequire('rabbitmq/rabbitmq');
 
 module.exports.controller = function(app) {
-
+  var Sequelize = model.sequelize();
   /**
    * Ensures current user is the owner of the company
    * Company ID must be passed as req.body.companyId
@@ -895,6 +896,114 @@ module.exports.controller = function(app) {
       });
     });
 
+  /*
+    Label's revenues, with filtering possibility, reported in expanded version
+    (that is grouped by Same Release and Same day).
+    If not startDate or endDate is provided it does return the amount for the 
+    last quarter
+  */
+  app.get('/labels/:id/revenues/expanded/:startDate?/:endDate?',
+    //   authenticationUtils.ensureAuthenticated, authenticationUtils.ensureAdmin,
+    function(req, res) {
+      console.log(req.params.startDate);
+      var startDate = moment(req.params.startDate, "DD-MM-YYYY", true);
+      var endDate = moment(req.params.endDate, "DD-MM-YYYY", true).endOf('day');
+
+      console.log("IS VALID: " + startDate.isValid());
+      if (startDate && startDate.isValid()) {
+        //startDate is valid
+        startDate = startDate.format();
+
+        console.log(endDate + "enddate")
+        console.log(endDate.isValid())
+        if (endDate && endDate.isValid()) {
+          //end Date is Valid
+          console.log("SO I FORMAT")
+          endDate = endDate.format();
+          console.log(endDate)
+        } else {
+          endDate = moment().utcOffset(0).format();
+        }
+      } else {
+        startDate = moment().startOf('quarter').format();
+        //CloudSQL date is different that Cloud Engine 
+        endDate = moment().utcOffset(0).format();
+        console.log(endDate);
+        // reset both startDate and endDate
+      }
+      var labelId = req.params.id;
+      model.Transaction.findAll({
+        attributes: ['ReleaseId', [Sequelize.fn('DATE_FORMAT',
+            Sequelize.col('Transaction.createdAt'), '%d/%m/%y'), 'dataColumn'],
+          [Sequelize.fn('SUM', Sequelize.col('finalPrice')), 'price']
+        ],
+        include: [{
+          model: model.Release,
+          attributes: ['catalogNumber']
+        }],
+        where: {
+          LabelId: labelId,
+          createdAt: {
+            $between: [startDate, endDate],
+          }
+        },
+        order: 'dataColumn',
+        group: ['ReleaseId', 'dataColumn']
+      }).then(function(results) {
+        res.send(results);
+      });
+    });
+
+  /*
+    The total label's revenues, with possibility to filter by date.
+  */
+  app.get('/labels/:id/revenues/total/:startDate?/:endDate?',
+    //   authenticationUtils.ensureAuthenticated, authenticationUtils.ensureAdmin,
+    function(req, res) {
+      console.log(req.params.startDate);
+      var startDate = moment(req.params.startDate, "DD-MM-YYYY", true);
+      var endDate = moment(req.params.endDate, "DD-MM-YYYY", true).endOf('day');
+
+      console.log("IS VALID: " + startDate.isValid());
+      if (startDate && startDate.isValid()) {
+        //startDate is valid
+        startDate = startDate.format();
+
+        console.log(endDate + "enddate")
+        console.log(endDate.isValid())
+        if (endDate && endDate.isValid()) {
+          //end Date is Valid
+          console.log("SO I FORMAT")
+          endDate = endDate.format();
+          console.log(endDate)
+        } else {
+          endDate = moment().utcOffset(0).format();
+        }
+      } else {
+        startDate = moment().startOf('quarter').format();
+        //CloudSQL date is different that Cloud Engine 
+        endDate = moment().utcOffset(0).format();
+        console.log(endDate);
+        // reset both startDate and endDate
+      }
+      var labelId = req.params.id;
+      model.Transaction.findAll({
+        attributes: [
+          [Sequelize.fn('SUM', Sequelize.col('finalPrice')), 'price']
+        ],
+
+        where: {
+          LabelId: labelId,
+          createdAt: {
+            $between: [startDate, endDate],
+          }
+        },
+        group: ['labelId']
+      }).then(function(results) {
+        res.send(results);
+      });
+    });
+
   /**
    * POST '/labels/:labelId/profilePicture/createFile'
    * Request a CDN policy to upload a new profile picture, if an update was
@@ -921,5 +1030,18 @@ module.exports.controller = function(app) {
    */
   app.get('/labels/:labelId/profilePicture/:size(small|medium|large)',
     imagesController.getImageFactory('logo', helper));
-  
+
+  function isValidDate(date) {
+    var matches = /^(\d{2})[-](\d{2})[-](\d{4})$/.exec(date);
+    if (matches == null) return false;
+    var d = matches[2];
+    var m = matches[1] - 1;
+    var y = matches[3];
+
+    var composedDate = new Date(y, m, d);
+    return composedDate.getDate() == d &&
+      composedDate.getMonth() == m &&
+      composedDate.getFullYear() == y;
+  }
+
 }; /* End of labels controller */
