@@ -239,7 +239,7 @@ function packRelease(xmlPath, idLabel) {
               description: result.release.description[0] || null,
               type: result.release.releaseSalesType[0]|| null 
               */
-            }).success(function(release) {
+            }).then(function(release) {
 
               var promises = [];
               label.addReleases(release).then(function() {
