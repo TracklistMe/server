@@ -328,7 +328,7 @@ function addTrack(trackObject, release, idLabel) {
       }
 
       // Disable track file in DropZone
-      promises.push(
+      artistInsertion.push(
         wrapFunction(disableDropZoneFile, this, [cdnPATH])
       );
 
