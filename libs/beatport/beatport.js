@@ -115,7 +115,7 @@ function validateFile(xmlPath) {
         var parser = new xml2js.Parser();
         parser.parseString(data, function(err, result) {
           // totalFileExpected = all the tracks + cover
-          fs.unlink(filename);
+          fs.unlink(temporaryFilename);
           var totalFileExpected = result.release.tracks[0].track.length + 1;
           // remember that the parser always ask to refear to a field as an 
           // array, so if you can access a variable, try to att [0] at the end
@@ -344,23 +344,6 @@ function addTrack(trackObject, release, idLabel) {
   return deferred.promise;
 }
 
-function disableDropZoneFile(cdnPath) {
-  var def = Q.defer();
-  model.DropZoneFile.find({
-    where: {
-      path: cdnPATH
-    }
-  }).then(function(file) {
-    if (file) {
-      file.status = 'TO_BE_PROCESSED';
-      file.save().then(function() {
-        def.resolve();
-      });
-    }
-  });
-  return def.promise;
-}
-
 function processQueueOfPromises(promisesArray, deferred) {
   if (!deferred) {
     deferred = Q.defer();
@@ -375,6 +358,23 @@ function processQueueOfPromises(promisesArray, deferred) {
   } else {
     deferred.resolve();
   }
+  return deferred.promise;
+}
+
+function disableDropZoneFile(cdnPath) {
+  var deferred = Q.defer();
+  model.DropZoneFile.find({
+    where: {
+      path: cdnPATH
+    }
+  }).then(function(file) {
+    if (file) {
+      file.status = 'TO_BE_PROCESSED';
+      file.save().then(function() {
+        deferred.resolve();
+      });
+    }
+  });
   return deferred.promise;
 }
 
