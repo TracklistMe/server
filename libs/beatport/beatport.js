@@ -2,10 +2,11 @@
 
 var Q = require('q');
 var xml2js = require('xml2js');
+var fs = require('fs');
 
 var model = rootRequire('models/model');
 var cloudstorage = rootRequire('libs/cdn/cloudstorage');
-var fs = require('fs');
+var helper = rootRequire('helpers/labels');
 
 var CORRECT = 'correct';
 var FAIL = 'fail';
@@ -45,7 +46,6 @@ function validate(xmlArrayList) {
       deferred.resolve(processResults);
     });
   return deferred.promise;
-
 }
 
 exports.validate = validate;
@@ -61,7 +61,6 @@ function process(xmlArrayList, idLabel) {
   for (var i = 0; i < xmlArrayList.length; i++) {
     promises.push(packRelease(xmlArrayList[i].path, idLabel));
   }
-
 
   // Joint of all the promises 
   Q.allSettled(promises)
@@ -89,14 +88,13 @@ exports.process = process;
 
 function validateFile(xmlPath) {
   var deferred = Q.defer();
-  var d = new Date();
-  var n = d.getTime();
-  var filename = 'temporaryFileName-' + n;
+  var temporaryFilename = 'temporaryFileName-' + Date.now();
   var xmlCloudStream = cloudstorage.createReadStream(xmlPath);
-  var writeFile = fs.createWriteStream(filename);
+  var xmlTempStream = fs.createWriteStream(temporaryFilename);
 
-  xmlCloudStream.pipe(writeFile).on('error', function(err) {
+  xmlCloudStream.pipe(xmlTempStream).on('error', function(err) {
     console.log('ERROR' + err);
+    deferred.reject(err);
   }).on('finish', function() {
     /* alternative asyncronous version 
     var stream = fs.createReadStream(filename);
@@ -107,7 +105,11 @@ function validateFile(xmlPath) {
     })
     */
 
-    fs.readFile(filename, 'utf8', function(err, data) {
+    fs.readFile(temporaryFilename, 'utf8', function(err, data) {
+      if (err) {
+        deferred.reject(err);
+        return;
+      }
 
       try {
         var parser = new xml2js.Parser();
@@ -119,6 +121,7 @@ function validateFile(xmlPath) {
           // array, so if you can access a variable, try to att [0] at the end
           // CHECK IF THE COVER IS AVAILABLE
           //console.log(util.inspect(result, false, null))
+          // TODO this splitting might be wrong if the filename has dots in it
           var coverFileName = 
             result.release.coverArtFilename[0].split('.')[0];
           var coverExtension = 
@@ -127,7 +130,8 @@ function validateFile(xmlPath) {
           var allAndObjects = [];
           var orObject = model.Sequelize.or();
           // ADD THE COVER 
-          allAndObjects.push(model.Sequelize.and({
+          allAndObjects.push(model.Sequelize.and(
+            {
               fileName: coverFileName
             }, {
               extension: coverExtension
@@ -141,12 +145,12 @@ function validateFile(xmlPath) {
               result.release.tracks[0].track[j].trackAudioFile[0].
                 audioFilename[0].split('.')[1];
             var andObject = model.Sequelize.and({
-              fileName: fileName
-            }, {
-              extension: extension
-            }, {
-              status: 'UPLOADED'
-            });
+                fileName: fileName
+              }, {
+                extension: extension
+              }, {
+                status: 'UPLOADED'
+              });
             allAndObjects.push(andObject);
           }
           // TRICK TO ADD ALL THE AND IN OR BETWEEN THEM
@@ -173,6 +177,8 @@ function validateFile(xmlPath) {
       } catch (err) {
         console.log(err.message);
         console.log(err);
+        deferred.reject(err);
+        return;
       }
     });
   });
@@ -182,16 +188,15 @@ function validateFile(xmlPath) {
 function packRelease(xmlPath, idLabel) {
   console.log('PACK RELEASE @beatport.js');
   var promisesQueue = Q.defer();
-  var d = new Date();
-  var n = d.getTime();
-  var filename = 'temporaryFileName-' + n;
+  var temporaryFilename = 'temporaryFileName-' + Date.now();
   var xmlCloudStream = cloudstorage.createReadStream(xmlPath);
-  var writeFile = fs.createWriteStream(filename);
+  var xmlTempStream = fs.createWriteStream(temporaryFilename);
 
 
-  xmlCloudStream.pipe(writeFile)
+  xmlCloudStream.pipe(xmlTempStream)
     .on('error', function(err) {
       console.log('ERROR' + err);
+      deferred.reject(err);
     }).on('finish', function() {
       /* alternative asyncronous version 
       var stream = fs.createReadStream(filename);
@@ -202,6 +207,10 @@ function packRelease(xmlPath, idLabel) {
       })
       */
       fs.readFile(filename, 'utf8', function(err, data) {
+        if (err) {
+          deferred.reject(err);
+          return;
+        }
 
         var parser = new xml2js.Parser();
         parser.parseString(data, function(err, resultXML) {
@@ -213,15 +222,14 @@ function packRelease(xmlPath, idLabel) {
             }
           }).then(function(label) {
             // CREATE THE RELEASE 
-            var cdnCover = 
-              'dropZone/' + 
-              idLabel + '/' + 
-              resultXML.release.coverArtFilename[0];
+            var cdnCover = helper.remoteDropZonePath(
+              idLabel, 
+              resultXML.release.coverArtFilename[0]);
             model.Release.create({
               title: resultXML.release.releaseTitle[0],
               cover: cdnCover,
               catalogNumber: resultXML.release.catalogNumber[0],
-              status: 'PROCESSING',
+              status: mode.ReleaseStatus.TO_BE_PROCESSED,
               metadataFile: xmlPath
               /*
               ADD CLOUD LINK TO the cover image 
@@ -231,64 +239,31 @@ function packRelease(xmlPath, idLabel) {
               type: result.release.releaseSalesType[0]|| null 
               */
             }).success(function(release) {
-              // TRANSFER ALL FILES
 
               var promises = [];
-              //var xml = resultXML.release.catalogNumber[0] + '.xml';
-              //var cover = resultXML.release.coverArtFilename[0];
-
-              // PROCESS ALL THE DB 
               label.addReleases(release).then(function() {
 
-                for (
-                  var j = 0; 
-                  j < resultXML.release.tracks[0].track.length; 
-                  j++) {
-                    promises.push(
-                      wrapFunction(
-                        addTrack, 
-                        this, 
-                        [
-                          resultXML.release.tracks[0].track[j], 
-                          release, 
-                          idLabel]));
+                // Promises that add tracks
+                var tracksCount = resultXML.release.tracks[0].track.length;
+                for (var j = 0; j < tracksCount; j++) {
+                  promises.push(
+                    wrapFunction(
+                      addTrack, 
+                      this, [
+                        resultXML.release.tracks[0].track[j], 
+                        release, 
+                        idLabel
+                      ]));
                 }
 
-                // Temporarily disable cover in dropzone 
+                // Promise that disables dropzone files
                 promises.push(
-                  wrapFunction(function() {
-                    var def = Q.defer();
-                    model.DropZoneFile.find({
-                      where: {
-                        path: cdnCover
-                      }
-                    }).then(function(file) {
-                      file.status = 'PROCESSING';
-                      def.resolve();
-                      file.save();
-
-                    });
-                    return def.promise;
-                  }, this, [])
+                  wrapFunction(disableDropZoneFile, this, [cdnCover])
                 );
 
-                // Temporarilu disable xml in dropzone 
+                // Promise that disables metadata files
                 promises.push(
-                  wrapFunction(function() {
-                    var def = Q.defer();
-
-                    model.DropZoneFile.find({
-                      where: {
-                        path: xmlPath
-                      }
-                    }).then(function(file) {
-                      file.status = 'PROCESSING';
-                      def.resolve();
-                      file.save();
-                      // ULTIMA CHIAMATA 
-                    });
-                    return def.promise;
-                  }, this, [])
+                  wrapFunction(disableDropZoneFile, this, [xmlPath])
                 );
 
                 processQueueOfPromises(promises).then(function() {
@@ -299,76 +274,50 @@ function packRelease(xmlPath, idLabel) {
           });
         });
       });
-      //labelPath = config.DATASTORE_PATH + '/' + idLabel + '/'
     });
   return promisesQueue.promise;
 }
-
-/* TODO: remove
-function transferFile(fullFilename, destination) {
-  var deferred = Q.defer();
-
-  var fileName = fullFilename.split('.')[0];
-  var extension = fullFilename.split('.')[1];
-  var andObject = model.Sequelize.and({
-    fileName: fileName
-  }, {
-    extension: extension
-  });
-
-  console.log(fullFilename);
-  model.DropZoneFile.find({
-      where: andObject
-    }).then(function(file) {
-      var originalPath = config.TEMPORARY_UPLOAD_FOLDER + file.path;
-      var destinationPath = destination + '/' + fullFilename;
-      fs.rename(originalPath, destinationPath, function(err) {
-        if (err) { 
-          throw err;
-        }
-        file.destroy().on('success', function(u) {
-          deferred.resolve(u);
-        });
-      });
-    });
-
-  return deferred.promise;
-}
-*/
 
 function addTrack(trackObject, release, idLabel) {
   var deferred = Q.defer();
   console.log(trackObject);
   var fileName = trackObject.trackAudioFile[0].audioFilename[0];
 
-  var cdnPATH = 'dropZone/' + idLabel + '/' + fileName;
+  var cdnPATH = helper.remoteDropZonePath(idLabel, fileName);
 
+  // Create track object
   model.Track.create({
     title: trackObject.trackTitle[0],
     version: trackObject.trackMixVersion[0],
     path: cdnPATH
-  }).error(function(err) {
-    console.log(err);
-  }).success(function(track) {
+  }).fail(function(err) {
+    deferred.reject(err);
+  }).then(function(track) {
 
+    // Add track to release's tracks
     release.addTrack(track, {
       position: trackObject.trackNumber[0]
     }).then(function() {
       var artistInsertion = [];
       artistInsertion.push(
-        wrapFunction(
-          addGenre, 
-          this, 
-          [trackObject.trackGenre, track]));
-      for (var j = 0; j < trackObject.trackArtists[0].artistName.length; j++) {
-        console.log('----- Call Insertion of Artist for this track ');
-        artistInsertion.push(
-          wrapFunction(
-            addArtist, 
-            this, 
-            [trackObject.trackArtists[0].artistName[j], track]));
+        wrapFunction(addGenre, this, [
+          trackObject.trackGenre, 
+          track
+        ]));
+
+      // Add artists to the track
+      if (trackObject.trackArtists) {
+        for (var j = 0; j < trackObject.trackArtists[0].artistName.length; j++) {
+          console.log('----- Call Insertion of Artist for this track ');
+          artistInsertion.push(
+            wrapFunction(
+              addProducer, 
+              this, 
+              [trackObject.trackArtists[0].artistName[j], track]));
+        }
       }
 
+      // Add remixers to the track
       if (trackObject.trackRemixers) {
         for (j = 0; j < trackObject.trackRemixers[0].remixerName.length; j++) {
           console.log('----- Call Insertion of Remixes for this track ');
@@ -380,42 +329,36 @@ function addTrack(trackObject, release, idLabel) {
         }
       }
 
-      // ADD THE LAST PROMISE THE RESOLVE THE CURRENT ONE 
-      artistInsertion.push(
-        wrapFunction(
-          function() {
-
-            var def = Q.defer();
-            model.DropZoneFile.find({
-              where: {
-                path: cdnPATH
-              }
-            }).on('success', function(file) {
-              file.status = 'PROCESSING';
-              file.save().on('success', function() {
-                console.log(
-                  'Resolve the main promise for this track: ' + 
-                  trackObject.trackNumber[0]);
-                def.resolve();
-              });
-            });
-            return def.promise;
-          }, this, []));
+      // Disable track file in DropZone
+      promises.push(
+        wrapFunction(disableDropZoneFile, this, [cdnPATH])
+      );
 
       processQueueOfPromises(artistInsertion).then(function() {
         deferred.resolve();
+      }, function(err) {
+        deferred.reject(err);
       });
-      /*
-      var result = Q();
-      artistInsertion.forEach(function(f) {
-          result = result.then(f);
-      });
-
-      */
-
     });
   });
   return deferred.promise;
+}
+
+function disableDropZoneFile(cdnPath) {
+  var def = Q.defer();
+  model.DropZoneFile.find({
+    where: {
+      path: cdnPATH
+    }
+  }).then(function(file) {
+    if (file) {
+      file.status = 'PROCESSING';
+      file.save().then(function() {
+        def.resolve();
+      });
+    }
+  });
+  return def.promise;
 }
 
 function processQueueOfPromises(promisesArray, deferred) {
@@ -426,6 +369,8 @@ function processQueueOfPromises(promisesArray, deferred) {
     var wrapFunction = promisesArray.shift();
     wrapFunction().then(function() {
       processQueueOfPromises(promisesArray, deferred);
+    }, function(reason) {
+      deferred.reject(reason);
     });
   } else {
     deferred.resolve();
@@ -444,12 +389,14 @@ function addGenre(genreName, track) {
     console.log('ADDED GENRE');
     track.addGenre(genre).then(function(associationGenre) {
       deferred.resolve(associationGenre);
+    }, function(err) {
+      deferred.reject(err);
     });
   });
   return deferred.promise;
 }
 
-function addArtist(artistName, trackObject) {
+function addProducer(artistName, trackObject) {
   var deferred = Q.defer();
   console.log('ADDING AS ARTIST ' + artistName);
   model.Artist.findOrCreate({
@@ -463,13 +410,15 @@ function addArtist(artistName, trackObject) {
     console.log('ADDEDed PRODUCER ' + artistName);
     trackObject.addProducer(artist).then(function(associationArtist) {
       deferred.resolve(associationArtist);
+    }, function(err) {
+      deferred.reject(err);
     });
   });
 
   return deferred.promise;
 }
 
-exports.addArtist = addArtist;
+exports.addProducer = addProducer;
 
 function addRemixer(artistName, trackObject) {
   var deferred = Q.defer();
@@ -485,6 +434,8 @@ function addRemixer(artistName, trackObject) {
     console.log('ADDed REMIXER ' + artistName);
     trackObject.addRemixer(artist).then(function(associationArtist) {
       deferred.resolve(associationArtist);
+    }, function(err) {
+      deferred.reject(err);
     });
   });
   return deferred.promise;

@@ -49,6 +49,8 @@ function sendReleaseToProcess(release) {
 
   while (!connectionReady) {}
 
+  console.log(JSON.stringify(release, null, 4));
+
   connection.queue(
     config.RABBITMQ_RELEASE_QUEUE, {
       autoDelete: false,
