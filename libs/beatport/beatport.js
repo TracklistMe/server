@@ -230,7 +230,7 @@ function packRelease(xmlPath, idLabel) {
               title: resultXML.release.releaseTitle[0],
               cover: cdnCover,
               catalogNumber: resultXML.release.catalogNumber[0],
-              status: mode.ReleaseStatus.TO_BE_PROCESSED,
+              status: model.ReleaseStatus.TO_BE_PROCESSED,
               metadataFile: xmlPath
               /*
               ADD CLOUD LINK TO the cover image 
