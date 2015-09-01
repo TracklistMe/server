@@ -291,8 +291,6 @@ function addTrack(trackObject, release, idLabel) {
     title: trackObject.trackTitle[0],
     version: trackObject.trackMixVersion[0],
     path: cdnPATH
-  }).fail(function(err) {
-    deferred.reject(err);
   }).then(function(track) {
 
     // Add track to release's tracks
@@ -340,6 +338,8 @@ function addTrack(trackObject, release, idLabel) {
         deferred.reject(err);
       });
     });
+  }).fail(function(err) {
+    deferred.reject(err);
   });
   return deferred.promise;
 }
