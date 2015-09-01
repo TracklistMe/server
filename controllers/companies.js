@@ -259,8 +259,10 @@ module.exports.controller = function(app) {
 
 
 
-
-  app.get('/companies/:id/revenues/:startDate?/:endDate?',
+  /*
+    The total label's revenues, with possibility to filter by date.
+  */
+  app.get('/companies/:id/revenues/expanded/:startDate?/:endDate?',
     //   authenticationUtils.ensureAuthenticated, authenticationUtils.ensureAdmin,
     function(req, res) {
       console.log(req.params.startDate);
@@ -336,7 +338,18 @@ module.exports.controller = function(app) {
     imagesController.getImageFactory('logo', helper));
 
 
+  function isValidDate(date) {
+    var matches = /^(\d{2})[-](\d{2})[-](\d{4})$/.exec(date);
+    if (matches == null) return false;
+    var d = matches[2];
+    var m = matches[1] - 1;
+    var y = matches[3];
 
+    var composedDate = new Date(y, m, d);
+    return composedDate.getDate() == d &&
+      composedDate.getMonth() == m &&
+      composedDate.getFullYear() == y;
+  }
 
 
 }; /* End of companies controller */
