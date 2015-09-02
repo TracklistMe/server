@@ -209,6 +209,8 @@ module.exports.controller = function(app) {
     databaseRelease.status = model.ReleaseStatus.PROCESSED;
 
     var updateTrackPromises = [];
+    var deleteDropZoneFilePromises = [];
+
     var oldCoverPath = databaseRelease.cover;
     var coverFilename = path.basename(oldCoverPath);
     var newCoverPath =
@@ -216,9 +218,12 @@ module.exports.controller = function(app) {
 
     for (var i = 0; i < release.Tracks.length; i++) {
       var track = release.Tracks[i];
-      // Update track
-      updateTrackPromises.push(
-        updateTrackPromise(track, release.id, newCoverPath));
+      // Update track if it was marked for update
+      if (track.status === model.TrackStatus.TO_BE_PROCESSED) {
+        updateTrackPromises.push(
+          updateTrackPromise(track, release.id, newCoverPath));
+        deleteDropZoneFilePromises.push(deleteDropZoneFilePromise(track.path));
+      }
     }
 
     Q.allSettled(updateTrackPromises).then(function(results) {
@@ -233,15 +238,6 @@ module.exports.controller = function(app) {
 
       if (!error) {
         console.log('All tracks have been updated and files moved');
-
-        var deleteDropZoneFilePromises = [];
-        for (i = 0; i < release.Tracks.length; i++) {
-          var track = release.Tracks[i];
-          // Delete dropzone file table entry
-          deleteDropZoneFilePromises.push(
-            deleteDropZoneFilePromise(track.path));
-        }
-
         Q.allSettled(deleteDropZoneFilePromises).then(function() {
 
           console.log('All track dropzone files deleted correctly');
@@ -251,7 +247,7 @@ module.exports.controller = function(app) {
               deleteDropZoneFilePromise(databaseRelease.metadataFile));
           }
 
-          if (databaseRelease) {
+          if (databaseRelease.cover !== newCoverPath) {
             morePromises.push(
               moveCoverPromise(databaseRelease, newCoverPath));
           }
