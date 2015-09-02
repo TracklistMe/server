@@ -439,6 +439,7 @@ module.exports.controller = function(app) {
                       position: currentTrack.ReleaseTracks.position
                     });
 
+                    var oldTrackPath = track.path;
                     track.updateAttributes(currentTrack).then(function() {
                       var i = 0;
                       var newProducers = [];
@@ -456,7 +457,8 @@ module.exports.controller = function(app) {
                       // Accept an array of promises functions. 
                       // Call the done when all are successful
                       // Set to be processed only if track file changed
-                      if (track.path !== currentTrack.path) {
+                      if (oldTrackPath !== currentTrack.path) {
+                        console.log('Track with id ' + track.id + ' updated');
                         trackUpdate = true;
                         track.status = model.TrackStatus.TO_BE_PROCESSED;
                       }
