@@ -713,8 +713,6 @@ Release.consolideJSON = function(releaseId, callback) {
       model: Label
     }]
   }).then(function(release) {
-    console.log('FIND');
-    console.log(releaseId);
     var jsonRelease = JSON.stringify(release);
     release.json = jsonRelease;
     release.save();
