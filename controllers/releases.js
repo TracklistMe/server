@@ -270,42 +270,6 @@ module.exports.controller = function(app) {
   }
 
   /**
-   * Update the release json in the db
-   */
-  function consolideJSON(releaseId) {
-    var deferredUpdate = Q.defer();
-
-    console.log('SAVE ------- JSON');
-    model.Release.find({
-      where: {
-        id: releaseId
-      },
-      attributes: ['id', 'catalogNumber', 'status'],
-      order: 'position',
-      include: [{
-        model: model.Track,
-        include: [{
-          model: model.Artist,
-          as: 'Remixer'
-        }, {
-          model: model.Artist,
-          as: 'Producer'
-        }]
-      }, {
-        model: model.Label
-      }]
-    }).then(function(release) {
-      release.json = JSON.stringify(release);
-      console.log('PULLED THE OBJECT');
-      release.save().then(function() {
-        console.log('SAVED WITH SUCCESS');
-        deferredUpdate.resolve(release.json);
-      });
-    });
-    return deferredUpdate.promise;
-  }
-
-  /**
    * Callback to the release result message on rabbitmq
    **/
   rabbitmq.onReleaseResult(
@@ -431,7 +395,7 @@ module.exports.controller = function(app) {
         model.Release.create(release).
         then(function(newRelease) {
           label.addReleases(newRelease).then(function() {
-            consolideJSON(newRelease.id);
+            model.Release.consolideJSON(newRelease.id);
             res.send(newRelease);
           });
         });
@@ -528,11 +492,12 @@ module.exports.controller = function(app) {
               results.forEach(function() {
                 console.log('Update Track Request Done');
               });
-              consolideJSON(releaseId).then(function(jsonRelease) {
-                console.log('===LOGGING RELEASE IN JSON FORMAT====');
-                console.log(jsonRelease);
-              });
-              //rabbitmq.sendReleaseToProcess(release);
+              model.Release.consolideJSON(releaseId).then(
+                function(jsonRelease) {
+                  console.log('===LOGGING RELEASE IN JSON FORMAT====');
+                  console.log(jsonRelease);
+                  rabbitmq.sendReleaseToProcess(jsonRelease);
+                });
               res.send(results);
             });
         });
@@ -559,8 +524,8 @@ module.exports.controller = function(app) {
 
   /**
    * GET '/releases/:releaseId/cover/:size(small|large|medium)'
-   * Get the release cover in the desired size, if it does not exist download the
-   * original avatar and resize it
+   * Get the release cover in the desired size, if it does not exist download
+   * the original avatar and resize it
    */
   app.get('/releases/:releaseId/cover/:size(small|medium|large)',
     imagesController.getImageFactory('cover', helper));
