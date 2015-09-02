@@ -197,7 +197,7 @@ function packRelease(xmlPath, idLabel) {
   xmlCloudStream.pipe(xmlTempStream)
     .on('error', function(err) {
       console.log('ERROR' + err);
-      deferred.reject(err);
+      promisesQueue.reject(err);
     }).on('finish', function() {
       /* alternative asyncronous version 
       var stream = fs.createReadStream(filename);
@@ -209,7 +209,7 @@ function packRelease(xmlPath, idLabel) {
       */
       fs.readFile(temporaryFilename, 'utf8', function(err, data) {
         if (err) {
-          deferred.reject(err);
+          promisesQueue.reject(err);
           return;
         }
 
@@ -304,9 +304,11 @@ function addTrack(trackObject, release, idLabel) {
           track
         ]));
 
+      var j = 0;
       // Add artists to the track
       if (trackObject.trackArtists) {
-        for (var j = 0; j < trackObject.trackArtists[0].artistName.length; j++) {
+        var artistsLength = trackObject.trackArtists[0].artistName.length;
+        for (j = 0; j < artistsLength; j++) {
           console.log('----- Call Insertion of Artist for this track ');
           artistInsertion.push(
             wrapFunction(
@@ -318,7 +320,8 @@ function addTrack(trackObject, release, idLabel) {
 
       // Add remixers to the track
       if (trackObject.trackRemixers) {
-        for (j = 0; j < trackObject.trackRemixers[0].remixerName.length; j++) {
+        var remixersLength = trackObject.trackRemixers[0].remixerName.length;
+        for (j = 0; j < remixersLength; j++) {
           console.log('----- Call Insertion of Remixes for this track ');
           artistInsertion.push(
             wrapFunction(
@@ -377,7 +380,7 @@ function disableDropZoneFile(cdnPath) {
       deferred.reject();
     }
   }).catch(function(err) {
-    deferred.reject();
+    deferred.reject(err);
   });
   return deferred.promise;
 }

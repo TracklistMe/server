@@ -9,7 +9,7 @@ var authenticationUtils = rootRequire('utils/authentication-utils');
 var model = rootRequire('models/model');
 var cloudstorage = rootRequire('libs/cdn/cloudstorage');
 var beatport = rootRequire('libs/beatport/beatport');
-var rabbitmq = rootRequire('rabbitmq/rabbitmq');
+var rabbitmq = rootRequire('libs/message_broker/rabbitmq');
 
 module.exports.controller = function(app) {
   var Sequelize = model.sequelize();
@@ -667,6 +667,7 @@ module.exports.controller = function(app) {
               console.log(result);
               // TODO REDUNDANT SAVE JSON AND SEND RABBIT 
               // 
+              /*
               model.Release.find({
                 where: {
                   id: result.value.dataValues.id
@@ -692,6 +693,12 @@ module.exports.controller = function(app) {
                 rabbitmq.sendReleaseToProcess(release);
                 release.save();
               });
+            });
+            */
+            model.Release.consolideJSON(
+              result.value.dataValues.id, 
+              function(jsonRelease) {
+                rabbitmq.sendReleaseToProcess(jsonRelease);
             });
             console.log('----');
             res.send(results);

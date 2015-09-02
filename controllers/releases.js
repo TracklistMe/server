@@ -6,7 +6,7 @@ var helper = rootRequire('helpers/releases');
 var authenticationUtils = rootRequire('utils/authentication-utils');
 var model = rootRequire('models/model');
 var cloudstorage = rootRequire('libs/cdn/cloudstorage');
-var rabbitmq = rootRequire('rabbitmq/rabbitmq');
+var rabbitmq = rootRequire('libs/message_broker/rabbitmq');
 var imagesController = rootRequire('controllers/images');
 
 

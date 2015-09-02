@@ -126,6 +126,11 @@ exports.Label = Label;
 /** 
  * Model: DropZoneFile
  */
+exports.DropZoneFileStatus = {
+  UPLOADED: 'UPLOADED',
+  PROCESSING: 'PROCESSING'
+};
+
 var DropZoneFile = sequelizeObject.define('DropZoneFile', {
   id: {
     type: Sequelize.INTEGER,
@@ -208,8 +213,6 @@ var Release = sequelizeObject.define('Release', {
   metadataFile: Sequelize.STRING,
   type: Sequelize.ENUM('release', 'album', 'compilation')
 });
-
-exports.Release = Release;
 
 /**
  * Model: Genre
@@ -689,6 +692,37 @@ Track.belongsToMany(Genre, {
 Genre.belongsToMany(Track, {
   through: 'GenresTracks'
 });
+
+Release.consolideJSON = function(releaseId, callback) {
+  Release.find({
+    where: {
+      id: releaseId
+    },
+    attributes: ['id', 'title', 'catalogNumber', 'status'],
+    order: 'position',
+    include: [{
+      model: Track,
+      include: [{
+        model: Artist,
+        as: 'Remixer'
+      }, {
+        model: Artist,
+        as: 'Producer'
+      }]
+    }, {
+      model: Label
+    }]
+  }).then(function(release) {
+    console.log('FIND');
+    console.log(releaseId);
+    var jsonRelease = JSON.stringify(release);
+    release.json = jsonRelease;
+    release.save();
+    callback(jsonRelease);
+  });
+};
+
+exports.Release = Release;
 
 /**
  * Create database and default entities if do not exist

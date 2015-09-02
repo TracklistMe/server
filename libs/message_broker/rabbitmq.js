@@ -5,7 +5,7 @@ var amqp = require('amqp');
 
 
 var connectionReady = false;
-
+var resultQueueListener;
 
 var connection = amqp.createConnection({
   host: config.RABBITMQ_HOST,
@@ -18,7 +18,7 @@ connection.on('ready', function() {
 
 
   connectionReady = true;
-  console.log("Connection is ready");
+  console.log('Connection is ready');
   if (resultQueueListener) {
     connection.queue(
       config.RABBITMQ_RESULT_QUEUE, {
@@ -26,44 +26,42 @@ connection.on('ready', function() {
         durable: true
       },
       function(queue) {
-        console.log("Before subscribe")
+        console.log('Before subscribe');
         queue.subscribe(resultQueueListener);
       },
       function(err) {
         console.log(err);
-        console.log("Callback not registered");
+        console.log('Callback not registered');
       });
   }
 
 });
 
 connection.on('error', function(err) {
-  console.log(err)
+  console.log(err);
 });
 
-var resultQueueListener;
-
-
-
-function sendReleaseToProcess(release) {
+function sendReleaseToProcess(releaseJSON) {
 
   while (!connectionReady) {}
 
-  console.log(JSON.stringify(release, null, 4));
+  console.log(releaseJSON);
 
   connection.queue(
     config.RABBITMQ_RELEASE_QUEUE, {
       autoDelete: false,
       durable: true
     },
-    function(queue) {
+    function(/* queue */) {
       connection.publish(
         config.RABBITMQ_RELEASE_QUEUE,
-        JSON.stringify(release, null, 4), {
+        releaseJSON, {
           deliveryMode: 2
         },
         function(err) {
-          if (err) console.log("Send failed")
+          if (err) {
+            console.log('Send failed');
+          }
         });
     });
 
@@ -73,23 +71,23 @@ exports.sendReleaseToProcess = sendReleaseToProcess;
 
 function onReleaseResult(callback) {
 
-  console.log("REGISTERING CALLBACK");
+  console.log('REGISTERING CALLBACK');
   resultQueueListener = callback;
 
   if (connectionReady) {
-    console.log("Connection is ready");
+    console.log('Connection is ready');
     connection.queue(
       config.RABBITMQ_RESULT_QUEUE, {
         autoDelete: false,
         durable: true
       },
       function(queue) {
-        console.log("before subscribe")
+        console.log('before subscribe');
         queue.subscribe(resultQueueListener);
       },
       function(err) {
         console.log(err);
-        console.log("Callback not registered");
+        console.log('Callback not registered');
       });
   }
 
