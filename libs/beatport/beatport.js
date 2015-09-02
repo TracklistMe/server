@@ -334,11 +334,11 @@ function addTrack(trackObject, release, idLabel) {
 
       processQueueOfPromises(artistInsertion).then(function() {
         deferred.resolve();
-      }, function(err) {
+      }).catch(function(err) {
         deferred.reject(err);
       });
     });
-  }).fail(function(err) {
+  }).catch(function(err) {
     deferred.reject(err);
   });
   return deferred.promise;
@@ -352,7 +352,7 @@ function processQueueOfPromises(promisesArray, deferred) {
     var wrapFunction = promisesArray.shift();
     wrapFunction().then(function() {
       processQueueOfPromises(promisesArray, deferred);
-    }, function(reason) {
+    }).catch(function(reason) {
       deferred.reject(reason);
     });
   } else {
@@ -365,7 +365,7 @@ function disableDropZoneFile(cdnPath) {
   var deferred = Q.defer();
   model.DropZoneFile.find({
     where: {
-      path: cdnPATH
+      path: cdnPath
     }
   }).then(function(file) {
     if (file) {
@@ -373,7 +373,11 @@ function disableDropZoneFile(cdnPath) {
       file.save().then(function() {
         deferred.resolve();
       });
+    } else {
+      deferred.reject();
     }
+  }).catch(function(err) {
+    deferred.reject();
   });
   return deferred.promise;
 }
@@ -389,7 +393,7 @@ function addGenre(genreName, track) {
     console.log('ADDED GENRE');
     track.addGenre(genre).then(function(associationGenre) {
       deferred.resolve(associationGenre);
-    }, function(err) {
+    }).catch(function(err) {
       deferred.reject(err);
     });
   });
@@ -410,7 +414,7 @@ function addProducer(artistName, trackObject) {
     console.log('ADDEDed PRODUCER ' + artistName);
     trackObject.addProducer(artist).then(function(associationArtist) {
       deferred.resolve(associationArtist);
-    }, function(err) {
+    }).catch(function(err) {
       deferred.reject(err);
     });
   });
@@ -434,7 +438,7 @@ function addRemixer(artistName, trackObject) {
     console.log('ADDed REMIXER ' + artistName);
     trackObject.addRemixer(artist).then(function(associationArtist) {
       deferred.resolve(associationArtist);
-    }, function(err) {
+    }).catch(function(err) {
       deferred.reject(err);
     });
   });
