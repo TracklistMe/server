@@ -716,7 +716,9 @@ Release.consolideJSON = function(releaseId, callback) {
     var jsonRelease = JSON.stringify(release);
     release.json = jsonRelease;
     release.save();
-    callback(jsonRelease);
+    if (callback) {
+      callback(jsonRelease);
+    }
   });
 };
 
