@@ -1,7 +1,5 @@
 'use strict';
 
-var fs = require('fs-extra');
-
 var moment = require('moment');
 var imagesController = rootRequire('controllers/images');
 var helper = rootRequire('helpers/labels');
@@ -693,12 +691,12 @@ module.exports.controller = function(app) {
                 rabbitmq.sendReleaseToProcess(release);
                 release.save();
               });
-            });
             */
-            model.Release.consolideJSON(
-              result.value.dataValues.id, 
-              function(jsonRelease) {
-                rabbitmq.sendReleaseToProcess(jsonRelease);
+              model.Release.consolideJSON(
+                result.value.dataValues.id, 
+                function(jsonRelease) {
+                  rabbitmq.sendReleaseToProcess(jsonRelease);
+              });
             });
             console.log('----');
             res.send(results);
@@ -903,31 +901,31 @@ module.exports.controller = function(app) {
       });
     });
 
-  /*
-    Label's revenues, with filtering possibility, reported in expanded version
-    (that is grouped by Same Release and Same day).
-    If not startDate or endDate is provided it does return the amount for the 
-    last quarter
+  /**
+   * Label's revenues, with filtering possibility, reported in expanded version
+   * (that is grouped by Same Release and Same day).
+   * If not startDate or endDate is provided it does return the amount for the 
+   * last quarter
   */
   app.get('/labels/:id/revenues/expanded/:startDate?/:endDate?',
-    //   authenticationUtils.ensureAuthenticated, authenticationUtils.ensureAdmin,
+    // authenticationUtils.ensureAuthenticated, authenticationUtils.ensureAdmin,
     function(req, res) {
       console.log(req.params.startDate);
-      var startDate = moment(req.params.startDate, "DD-MM-YYYY", true);
-      var endDate = moment(req.params.endDate, "DD-MM-YYYY", true).endOf('day');
+      var startDate = moment(req.params.startDate, 'DD-MM-YYYY', true);
+      var endDate = moment(req.params.endDate, 'DD-MM-YYYY', true).endOf('day');
 
-      console.log("IS VALID: " + startDate.isValid());
+      console.log('IS VALID: ' + startDate.isValid());
       if (startDate && startDate.isValid()) {
         //startDate is valid
         startDate = startDate.format();
 
-        console.log(endDate + "enddate")
-        console.log(endDate.isValid())
+        console.log(endDate + 'enddate');
+        console.log(endDate.isValid());
         if (endDate && endDate.isValid()) {
           //end Date is Valid
-          console.log("SO I FORMAT")
+          console.log('SO I FORMAT');
           endDate = endDate.format();
-          console.log(endDate)
+          console.log(endDate);
         } else {
           endDate = moment().utcOffset(0).format();
         }
@@ -961,28 +959,28 @@ module.exports.controller = function(app) {
       });
     });
 
-  /*
-    The total label's revenues, with possibility to filter by date.
-  */
+  /**
+   * The total label's revenues, with possibility to filter by date.
+   */
   app.get('/labels/:id/revenues/total/:startDate?/:endDate?',
-    //   authenticationUtils.ensureAuthenticated, authenticationUtils.ensureAdmin,
+    //authenticationUtils.ensureAuthenticated, authenticationUtils.ensureAdmin,
     function(req, res) {
       console.log(req.params.startDate);
-      var startDate = moment(req.params.startDate, "DD-MM-YYYY", true);
-      var endDate = moment(req.params.endDate, "DD-MM-YYYY", true).endOf('day');
+      var startDate = moment(req.params.startDate, 'DD-MM-YYYY', true);
+      var endDate = moment(req.params.endDate, 'DD-MM-YYYY', true).endOf('day');
 
-      console.log("IS VALID: " + startDate.isValid());
+      console.log('IS VALID: ' + startDate.isValid());
       if (startDate && startDate.isValid()) {
         //startDate is valid
         startDate = startDate.format();
 
-        console.log(endDate + "enddate")
-        console.log(endDate.isValid())
+        console.log(endDate + 'enddate');
+        console.log(endDate.isValid());
         if (endDate && endDate.isValid()) {
           //end Date is Valid
-          console.log("SO I FORMAT")
+          console.log('SO I FORMAT');
           endDate = endDate.format();
-          console.log(endDate)
+          console.log(endDate);
         } else {
           endDate = moment().utcOffset(0).format();
         }
@@ -1037,18 +1035,5 @@ module.exports.controller = function(app) {
    */
   app.get('/labels/:labelId/profilePicture/:size(small|medium|large)',
     imagesController.getImageFactory('logo', helper));
-
-  function isValidDate(date) {
-    var matches = /^(\d{2})[-](\d{2})[-](\d{4})$/.exec(date);
-    if (matches == null) return false;
-    var d = matches[2];
-    var m = matches[1] - 1;
-    var y = matches[3];
-
-    var composedDate = new Date(y, m, d);
-    return composedDate.getDate() == d &&
-      composedDate.getMonth() == m &&
-      composedDate.getFullYear() == y;
-  }
 
 }; /* End of labels controller */
