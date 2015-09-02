@@ -407,6 +407,7 @@ module.exports.controller = function(app) {
     function(req, res) {
       var releaseId = req.params.id;
       var release = req.body.release;
+      var trackUpdate = false;
 
       // Update the release
       model.Release
@@ -454,7 +455,11 @@ module.exports.controller = function(app) {
                       }
                       // Accept an array of promises functions. 
                       // Call the done when all are successful
-                      track.status = model.TrackStatus.TO_BE_PROCESSED;
+                      // Set to be processed only if track file changed
+                      if (track.path !== currentTrack.path) {
+                        trackUpdate = true;
+                        track.status = model.TrackStatus.TO_BE_PROCESSED;
+                      }
                       Q.all([
                         track.setRemixer(newRemixers),
                         track.setProducer(newProducers),
@@ -488,12 +493,13 @@ module.exports.controller = function(app) {
               results.forEach(function() {
                 console.log('Update Track Request Done');
               });
-              model.Release.consolideJSON(releaseId).then(
-                function(jsonRelease) {
-                  console.log('===LOGGING RELEASE IN JSON FORMAT====');
-                  console.log(jsonRelease);
+              model.Release.consolideJSON(releaseId, function(jsonRelease) {
+                console.log('===LOGGING RELEASE IN JSON FORMAT====');
+                console.log(jsonRelease);
+                if (trackUpdate) {
                   rabbitmq.sendReleaseToProcess(jsonRelease);
-                });
+                }
+              });
               res.send(results);
             });
         });
