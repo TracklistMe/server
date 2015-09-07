@@ -249,6 +249,7 @@ var Track = sequelizeObject.define('Track', {
   version: Sequelize.STRING,
   cover: Sequelize.STRING,
   path: Sequelize.STRING,
+  oldPath: Sequelize.STRING,
   mp3Path: Sequelize.STRING,
   snippetPath: Sequelize.STRING,
   oggSnippetPath: Sequelize.STRING,

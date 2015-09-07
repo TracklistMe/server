@@ -219,10 +219,10 @@ module.exports.controller = function(app) {
     for (var i = 0; i < release.Tracks.length; i++) {
       var track = release.Tracks[i];
       // Update track if it was marked for update
-      if (track.status === model.TrackStatus.PROCESSING_SUCCEDED) {
+      if (track.status === model.TrackStatus.PROCESSING_SUCCEEDED) {
+        deleteDropZoneFilePromises.push(deleteDropZoneFilePromise(track.path));
         updateTrackPromises.push(
           updateTrackPromise(track, release.id, newCoverPath));
-        deleteDropZoneFilePromises.push(deleteDropZoneFilePromise(track.path));
       }
     }
 
@@ -461,6 +461,7 @@ module.exports.controller = function(app) {
                         console.log('Track with id ' + track.id + ' updated');
                         trackUpdate = true;
                         track.status = model.TrackStatus.TO_BE_PROCESSED;
+                        track.oldPath = oldTrackPath;
                       }
                       Q.all([
                         track.setRemixer(newRemixers),
