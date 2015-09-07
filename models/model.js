@@ -235,6 +235,7 @@ exports.TrackStatus = {
   INCOMPLETE: 'INCOMPLETE',
   TO_BE_PROCESSED: 'TO_BE_PROCESSED',
   PROCESSED: 'PROCESSED',
+  PROCESSING_SUCCEEDED: 'PROCESSING_SUCCEEDED',
   PROCESSING_FAILED: 'PROCESSING_FAILED'
 };
 
@@ -261,11 +262,12 @@ var Track = sequelizeObject.define('Track', {
   },
   status: {
     type: Sequelize.ENUM(
-      exports.ReleaseStatus.INCOMPLETE,
-      exports.ReleaseStatus.TO_BE_PROCESSED,
-      exports.ReleaseStatus.PROCESSED,
-      exports.ReleaseStatus.PROCESSING_FAILED),
-    defaultValue: exports.ReleaseStatus.TO_BE_PROCESSED,
+      exports.TrackStatus.INCOMPLETE,
+      exports.TrackStatus.TO_BE_PROCESSED,
+      exports.TrackStatus.PROCESSED,
+      exports.TrackStatus.PROCESSING_SUCCEEDED,
+      exports.TrackStatus.PROCESSING_FAILED),
+    defaultValue: exports.TrackStatus.TO_BE_PROCESSED,
     allowNull: false
   },
   errorMessage: Sequelize.STRING

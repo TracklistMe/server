@@ -28,9 +28,8 @@ exports.timestamp = timestamp;
  * Returns a name for the resized image
  **/
 function resized(filename, width, height) {
-  var originalfilename = filename.split('.')[0];
   var extension = filename.split('.').slice(0).pop();
-  return filename.replace(extension, '').replace(/\W+/g, '') +
+  return filename.replace(extension, '') +
     "_resized_" + width + '-' + height + "." + extension;
 }
 
@@ -62,12 +61,6 @@ function remoteDropZonePath(labelId, filename) {
 }
 
 exports.remoteDropZonePath = remoteDropZonePath;
-
-function remoteReleasePath(releaseId, filename) {
-  return 'releases/' + releaseId + "/" + filename;
-}
-
-exports.remoteReleasePath = remoteReleasePath;
 
 /**
  * Generator of upload functions
@@ -201,3 +194,20 @@ function resizeFunction(localPathBuilder, remotePathBuilder) {
 } /* Resize function builder*/
 
 exports.resizeFunction = resizeFunction;
+
+/**
+ * Resize a source image to the width and height specified and save it to the
+ * dest path
+ */
+function resize(source, dest, width, height, callback) {
+  im.crop({
+    srcPath: source,
+    dstPath: dest,
+    width: width,
+    height: height,
+    quality: 1,
+    gravity: 'Center'
+  }, callback);
+}
+
+exports.resize = resize;

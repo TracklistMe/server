@@ -219,7 +219,7 @@ module.exports.controller = function(app) {
     for (var i = 0; i < release.Tracks.length; i++) {
       var track = release.Tracks[i];
       // Update track if it was marked for update
-      if (track.status === model.TrackStatus.TO_BE_PROCESSED) {
+      if (track.status === model.TrackStatus.PROCESSING_SUCCEDED) {
         updateTrackPromises.push(
           updateTrackPromise(track, release.id, newCoverPath));
         deleteDropZoneFilePromises.push(deleteDropZoneFilePromise(track.path));
@@ -475,7 +475,8 @@ module.exports.controller = function(app) {
                     model.Track.create({
                       title: currentTrack.title,
                       version: currentTrack.version,
-                      path: currentTrack.path
+                      path: currentTrack.path,
+                      status: model.TrackStatus.TO_BE_PROCESSED
                     }).then(function(track) {
                       newRelease.addTrack(track, {
                         position: currentTrack.ReleaseTracks.position
