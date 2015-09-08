@@ -99,7 +99,13 @@ module.exports.controller = function(app) {
         console.log('Track does not exist, update promise rejected');
         deferredUpdate.reject(new Error('Track does not exist for release'));
       } else {
+        // Save old paths if the track is being updated
+        var oldPath = databaseTrack.oldPath;
+        var oldSnippetPath = databaseTrack.snippetPath;
+        var oldOggSnippetPath = databaseTrack.oggSnippetPath;
+        var oldMp3Path = databaseTrack.mp3Path;
         // Update track paths
+        databaseTrack.oldPath = null;
         databaseTrack.waveform = track.waveform;
         databaseTrack.snippetPath = track.snippetPath;
         databaseTrack.oggSnippetPath = track.oggSnippetPath;
@@ -122,6 +128,13 @@ module.exports.controller = function(app) {
             } else {
               databaseTrack.path = newLosslessPath;
               databaseTrack.save();
+              // Delete old track files if any exists
+              if (oldPath) {
+                cloudstorage.remove(oldPath);
+                cloudstorage.remove(oldSnippetPath);
+                cloudstorage.remove(oldOggSnippetPath);
+                cloudstorage.remove(oldMp3Path);
+              }
               deferredUpdate.resolve();
             }
           });
@@ -457,11 +470,12 @@ module.exports.controller = function(app) {
                       // Accept an array of promises functions. 
                       // Call the done when all are successful
                       // Set to be processed only if track file changed
-                      if (oldTrackPath !== currentTrack.path) {
-                        console.log('Track with id ' + track.id + ' updated');
-                        trackUpdate = true;
-                        track.status = model.TrackStatus.TO_BE_PROCESSED;
-                        track.oldPath = oldTrackPath;
+                      if (currentTrack.path && 
+                        oldTrackPath !== currentTrack.path) {
+                          console.log('Track with id ' + track.id + ' updated');
+                          trackUpdate = true;
+                          track.status = model.TrackStatus.TO_BE_PROCESSED;
+                          track.oldPath = oldTrackPath;
                       }
                       Q.all([
                         track.setRemixer(newRemixers),
