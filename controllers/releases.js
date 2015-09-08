@@ -404,7 +404,11 @@ module.exports.controller = function(app) {
         model.Release.create(release).
         then(function(newRelease) {
           label.addReleases(newRelease).then(function() {
-            model.Release.consolideJSON(newRelease.id);
+            model.Release.consolideJSON(newRelease.id, function(jsonRelease) {
+              console.log('===LOGGING RELEASE IN JSON FORMAT====');
+              console.log(jsonRelease);
+              rabbitmq.sendReleaseToProcess(jsonRelease);
+            });
             res.send(newRelease);
           });
         });
