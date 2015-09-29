@@ -16,7 +16,11 @@ module.exports.controller = function(app) {
       where: {
         id: trackId
       },
-      include: [{
+      include: [
+      {
+        model: model.Genre
+      },
+      {
         model: model.Artist,
         as: 'Remixer'
       }, {
