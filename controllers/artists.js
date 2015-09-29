@@ -58,7 +58,7 @@ module.exports.controller = function(app) {
    * Return the artist associated with the specified ID
    */
   app.get('/artists/:id',
-    authenticationUtils.ensureAuthenticated, authenticationUtils.ensureAdmin,
+    //authenticationUtils.ensureAuthenticated, authenticationUtils.ensureAdmin,
     function(req, res) {
       var artistId = req.params.id;
       model.Artist.find({

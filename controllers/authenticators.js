@@ -819,7 +819,14 @@ module.exports.controller = function(app) {
       });
     });
   });
-
+  
+   app.get('/loadInfo', function(req,res){
+     res.send({});
+   })
+  app.get('/loadAuth', function(req,res){
+     res.send({});
+   })
+   
   /**
    * GET /auth/unlink/:provider
    * Unlink Provider
