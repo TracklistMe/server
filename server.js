@@ -24,8 +24,7 @@ var express = require('express');
 var logger = require('morgan');
 var request = require('request');
 var multipart = require('connect-multiparty');
-var expressValidator = require('express-validator')
-
+var expressValidator = require('express-validator');
 
 var config = rootRequire('config/config');
 var cloudstorage = rootRequire('libs/cdn/cloudstorage');
@@ -45,6 +44,7 @@ var prices = rootRequire('controllers/prices.js');
 var genres = rootRequire('controllers/genres.js');
 var authenticators = rootRequire('controllers/authenticators.js');
 var stripePayment = rootRequire('controllers/stripePayment.js');
+var earlyUsers = rootRequire('controllers/earlyUsers.js');
 /*
  * Require models
  */
@@ -302,6 +302,7 @@ authenticators.controller(app);
 currencies.controller(app);
 prices.controller(app);
 stripePayment.controller(app);
+earlyUsers.controller(app);
 
 /**
  * Error handlers have to be defined after all routes

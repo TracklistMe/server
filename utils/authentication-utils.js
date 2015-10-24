@@ -24,6 +24,7 @@ function ensureAuthenticated(req, res, next) {
   }
   
   req.user = payload.sub;
+  req.scopes = payload.scopes;
   next();
 }
 
@@ -46,6 +47,31 @@ function ensureAdmin(req, res, next) {
 
 exports.ensureAdmin = ensureAdmin;
 
+/**
+ * Check user has the required scopes
+ */
+function checkScopes(requiredScopes) {
+  return function(req, res, next) {
+    var authorized = true;
+    if (req.scopes) {
+      for (var j=0; j<requiredScopes.length && authorized; j++){
+        if (req.scopes.indexOf(requiredScopes[j]) === -1) {
+          authorized = false;
+        }
+      }
+    }
+    if (authorized) {
+      return next();
+    }
+    console.log(req.scopes);
+    return res.status(401).send({
+      message: 'You don\'t have access to the requested resource'
+    });
+  }
+}
+
+exports.checkScopes = checkScopes;
+
 /*
  |--------------------------------------------------------------------------
  | Generate JSON Web Token
@@ -55,9 +81,22 @@ function createToken(user) {
   var payload = {
     sub: user.id,
     iat: moment().unix(),
-    exp: moment().add(14, 'days').unix()
+    exp: moment().add(14, 'days').unix(),
+    scopes: ['user']
   };
   return jwt.encode(payload, config.TOKEN_SECRET);
 }
 
 exports.createToken = createToken;
+
+function createEarlyToken(user) {
+  var payload = {
+    sub: user.id,
+    iat: moment().unix(),
+    exp: moment().add(14, 'days').unix(),
+    scopes: ['early-user']
+  };
+  return jwt.encode(payload, config.TOKEN_SECRET);
+}
+
+exports.createEarlyToken = createEarlyToken;

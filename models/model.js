@@ -75,6 +75,60 @@ User.hook('beforeValidate', function(user) {
 exports.User = User;
 
 /** 
+ * Model: EarlyUser
+ */
+exports.EarlyUserStatus = {
+  INCOMPLETE: 'INCOMPLETE',
+  UNVERIFIED: 'UNVERIFIED',
+  NOT_INVITED_FRIEND: 'NOT_INVITED_FRIEND',
+  UNVERIFIED_FRIEND: 'UNVERIFIED_FRIEND',
+  VERIFIED: 'VERIFIED'
+};
+
+var EarlyUser = sequelizeObject.define('EarlyUser', {
+  id: {
+    type: Sequelize.INTEGER,
+    autoIncrement: true,
+    primaryKey: true
+  },
+  email: Sequelize.STRING,
+  password: Sequelize.STRING,
+  isArtist: {
+    type: Sequelize.BOOLEAN,
+    allowNull: false,
+    defaultValue: false
+  },
+  isLabel: {
+    type: Sequelize.BOOLEAN,
+    allowNull: false,
+    defaultValue: false
+  },
+  verificationCode: Sequelize.STRING,
+  status: {
+    type: Sequelize.ENUM(
+      exports.EarlyUserStatus.INCOMPLETE,
+      exports.EarlyUserStatus.UNVERIFIED,
+      exports.EarlyUserStatus.NOT_INVITED_FRIEND,
+      exports.EarlyUserStatus.UNVERIFIED_FRIEND,
+      exports.EarlyUserStatus.VERIFIED),
+    defaultValue: exports.EarlyUserStatus.UNVERIFIED,
+    allowNull: false
+  },
+  referredCount: Sequelize.INTEGER
+});
+
+exports.EarlyUser = EarlyUser;
+
+EarlyUser.belongsTo(EarlyUser, {
+  foreignKey: {
+    name: 'referredBy',
+    allowNull: true,
+    defaultValue: null
+  },
+  onDelete: 'NO ACTION'
+});
+
+/** 
  * Model: Comapany
  */
 var Company = sequelizeObject.define('Company', {
