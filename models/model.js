@@ -123,8 +123,9 @@ EarlyUser.belongsTo(EarlyUser, {
   foreignKey: {
     name: 'referredBy',
     allowNull: true,
-    defaultValue: null
+    defaultValue: null,
   },
+  as: 'ReferringUser',
   onDelete: 'NO ACTION'
 });
 

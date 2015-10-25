@@ -35,8 +35,9 @@ module.exports.controller = function(app) {
   /**
    * Adds an EarlyUser waiting for verification. If user is successfully
    * added res is sent, otherwise and error is returned
+   * callback must have the following format: function(user, err) { ... }
    */
-  function addEarlyUser(email, verificationCode, referredBy, res, next) {
+  function addEarlyUser(email, verificationCode, referredBy, isArtist, isLabel, callback) {
     var referredById = referredBy ? referredBy.id : null;
     var status = model.EarlyUserStatus.UNVERIFIED;
     if (referredBy) {
@@ -49,14 +50,16 @@ module.exports.controller = function(app) {
       email: email,
       verificationCode: verificationCode,
       referredBy: referredById,
-      status: status
+      status: status,
+      isArtist: isArtist,
+      isLabel: isLabel
     }).then(function(earlyUser) {
       if (status === model.EarlyUserStatus.UNVERIFIED_FRIEND ||
         status === model.EarlyUserStatus.UNVERIFIED) {
         // TODO send email to user with verification code
         sendVerificationEmail(email, verificationCode, referredBy);
       }
-      res.send({
+      return callback({
         id: earlyUser.id,
         email: earlyUser.email,
         status: earlyUser.status,
@@ -68,7 +71,7 @@ module.exports.controller = function(app) {
     }).catch(function(err) {
       err.status = 500;
       err.message = "Failed adding early user";
-      return next(err);
+      return callback(null, err);
     });
   }
 
@@ -115,6 +118,10 @@ module.exports.controller = function(app) {
 
     req.checkBody('email', 'Invalid early user email').notEmpty().isEmail();
     req.checkBody('referredBy', 'Invalid reference id').optional().isInt();
+    req.checkBody('isLabel', 'Invalid isLabel field').optional().isBoolean();
+    req.checkBody('isArtist', 'Invalid isArtist field').optional().isBoolean();
+    var isArtist = req.body.isArtist || false;
+    var isLabel = req.body.isLabel || false;
     var errors = req.validationErrors();
     if (errors) {
       var err = new Error();
@@ -143,10 +150,34 @@ module.exports.controller = function(app) {
             id: referredBy
           }
         }).then(function(referringUser) {
-          addEarlyUser(email, verificationCode, referringUser, res, next);
+          addEarlyUser(
+            email, 
+            verificationCode, 
+            referringUser, 
+            isArtist, 
+            isLabel,
+            function(user, err) {
+              if (user) {
+                return res.send(user);
+              } else {
+                return next(err);
+              }
+            });
         });
       } else {
-        addEarlyUser(email, verificationCode, null, res, next);
+        addEarlyUser(
+          email, 
+          verificationCode, 
+          null, 
+          isArtist, 
+          isLabel,
+          function(user, err) {
+            if (user) {
+              return res.send(user);
+            } else {
+              return next(err);
+            }
+          });
       }
     });
   });
@@ -169,21 +200,34 @@ module.exports.controller = function(app) {
 
     var email = req.params.email;
     model.EarlyUser.find({
-      where: {
-        email: email,
-        status: model.EarlyUserStatus.UNVERIFIED
-      }
+      where: model.Sequelize.and(
+        {
+          email: email
+        },
+        model.Sequelize.or(
+          {
+            status: model.EarlyUserStatus.UNVERIFIED 
+          },
+          { 
+            status: model.EarlyUserStatus.UNVERIFIED_FRIEND 
+          }
+        )        
+      ),
+      include: [{
+        model: model.EarlyUser, as: "ReferringUser"
+      }]
     }).then(function(earlyUser) {
       if (earlyUser) {
         var verificationCode = uuid.v4();
         earlyUser.verificationCode = verificationCode;
-        earlyUser.save(function() {
-          // TODO re-send verification email
-          // TODO should update the code?
-          return res.send(verificationCode); //TODO remove          
+        earlyUser.save().then(function() {
+          sendVerificationEmail(email, verificationCode, earlyUser.ReferringUser);
+          return res.send({
+            message: 'Verification email successfully sent'
+          });
         }).catch(function(err) {
           err.status = 500;
-          err.message = "Failed adding early user";
+          err.message = 'Failed adding early user';
           return next(err);
         });
       } else {
@@ -246,8 +290,8 @@ module.exports.controller = function(app) {
                 err.message = "Failed saving early user data";
                 return next(err);
               }
-              earlyUser.isArtist = isArtist;
-              earlyUser.isLabel = isLabel;
+              earlyUser.isArtist = earlyUser.isArtist || isArtist;
+              earlyUser.isLabel = earlyUser.isLabel || isLabel;
               earlyUser.status = model.EarlyUserStatus.VERIFIED;
               earlyUser.password = passwordHash;
               earlyUser.save().then(function() {
@@ -357,13 +401,58 @@ module.exports.controller = function(app) {
         }
       }).then(function(referringUser) {
         if (referringUser) {
-          addEarlyUser(friendEmail, verificationCode, referringUser, res, next);
+          addEarlyUser(
+            friendEmail, 
+            verificationCode, 
+            referringUser, 
+            false, 
+            false,
+            function(user, err) {
+              if (user) {
+                return res.send(user);
+              } else {
+                return next(err);
+              }
+            });
         } else {
           return res.status(404).send({
             message: 'Referring user not found'
           });         
         }
       });
+    });
+  });
+
+  /**
+   * GET /earlyUsers/search/:email
+   * Checks whether the provided email is already in use or not
+   */
+  app.get('/earlyUsers/search/:email', function(req, res, next) {
+
+    req.checkParams('email', 'Invalid early user email').notEmpty().isEmail();
+    var errors = req.validationErrors();
+    if (errors) {
+      var err = new Error();
+      err.status = 400;
+      err.message = 'There have been validation errors';
+      err.validation = errors;
+      return next(err);
+    }
+    var email = req.params.email;
+    model.EarlyUser.find({
+      where: {
+        email: email
+      }
+    }).then(function(user) {
+      if (user) {
+        return res.send({
+          email: email
+        });
+      } else {
+        return res.status(404).send({
+          message: 'Email not found'
+        });         
+      }
     });
   });
 
