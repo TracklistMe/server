@@ -24,10 +24,18 @@ module.exports.controller = function(app) {
       message = 'You have been referred by ' + referredBy.email + '\n' + message;
     } 
     mailer.sendEmail({
-        to: email,
-        from: 'noreply@tracklist.me',
-        subject: 'Verify your email address',
-        text: message
+      to: email,
+      from: 'noreply@tracklist.me',
+      subject: 'Verify your email address',
+      text: message
+    });
+
+    // Todo(bortignon): remove this once in production
+    mailer.sendEmail({
+      to: 'info@nicolabortignon.com',
+      from: 'noreply@tracklist.me',
+      subject: 'A new user tried to register: '+email,
+      text: message
     });
   }
 
