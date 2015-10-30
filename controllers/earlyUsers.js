@@ -14,12 +14,14 @@ module.exports.controller = function(app) {
    * Send a verification email to the specified address with the specified
    * verification code
    */
-  function sendVerificationEmail(email, verificationCode, referredBy, callback) {
+  function sendVerificationEmail(userId, email, verificationCode, referredBy, callback) {
     callback = callback || function(error, json) {
       console.log(email);
       console.log(err);
     };
-    var message = 'Your verification code is ' + verificationCode;
+    var verificationLink = "https://tracklist.me/verifyAccount/" + userId + 
+      "/" + verificationCode;
+    var message = 'Your verification code is '+verificationLink;
     if (referredBy) {
       message = 'You have been referred by ' + referredBy.email + '\n' + message;
     } 
@@ -65,7 +67,7 @@ module.exports.controller = function(app) {
       if (status === model.EarlyUserStatus.UNVERIFIED_FRIEND ||
         status === model.EarlyUserStatus.UNVERIFIED) {
         // TODO send email to user with verification code
-        sendVerificationEmail(email, verificationCode, referredBy);
+        sendVerificationEmail(earlyUser.id, email, verificationCode, referredBy);
       }
       return callback({
         id: earlyUser.id,
@@ -110,7 +112,8 @@ module.exports.controller = function(app) {
     }).then(function(friends) {
       if (friends) {
         for (var i=0; i<friends.length; i++){
-          sendVerificationEmail(friends[i].email, friends[i].verificationCode, earlyUser);
+          sendVerificationEmail(friends[i].id, friends[i].email, 
+            friends[i].verificationCode, earlyUser);
           friends[i].status = model.EarlyUserStatus.UNVERIFIED_FRIEND;
           friends[i].save();
         }
@@ -229,7 +232,7 @@ module.exports.controller = function(app) {
         var verificationCode = uuid.v4();
         earlyUser.verificationCode = verificationCode;
         earlyUser.save().then(function() {
-          sendVerificationEmail(email, verificationCode, earlyUser.ReferringUser);
+          sendVerificationEmail(earlyUser.id, email, verificationCode, earlyUser.ReferringUser);
           return res.send({
             message: 'Verification email successfully sent'
           });
