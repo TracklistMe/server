@@ -232,6 +232,7 @@ module.exports.controller = function(app) {
         var verificationCode = uuid.v4();
         earlyUser.verificationCode = verificationCode;
         earlyUser.save().then(function() {
+          console.log(earlyUser.id, email, verificationCode, earlyUser.ReferringUser);
           sendVerificationEmail(earlyUser.id, email, verificationCode, earlyUser.ReferringUser);
           return res.send({
             message: 'Verification email successfully sent'
@@ -402,7 +403,7 @@ module.exports.controller = function(app) {
     }).then(function(existingEarlyUser) {
       if (existingEarlyUser) {
         return res.status(409).send({
-          message: 'Email is already in use'
+          message: 'This user is already registered'
         });
       }
       var verificationCode = uuid.v4();
