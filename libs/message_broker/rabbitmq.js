@@ -7,6 +7,7 @@ var amqp = require('amqp');
 var connectionReady = false;
 var resultQueueListener;
 
+/*
 var connection = amqp.createConnection({
   host: config.RABBITMQ_HOST,
   port: config.RABBITMQ_PORT,
@@ -40,9 +41,9 @@ connection.on('ready', function() {
 connection.on('error', function(err) {
   console.log(err);
 });
-
+*/
 function sendReleaseToProcess(releaseJSON) {
-
+/*
   while (!connectionReady) {}
 
   console.log(releaseJSON);
@@ -52,7 +53,7 @@ function sendReleaseToProcess(releaseJSON) {
       autoDelete: false,
       durable: true
     },
-    function(/* queue */) {
+    function() {
       connection.publish(
         config.RABBITMQ_RELEASE_QUEUE,
         releaseJSON, {
@@ -64,7 +65,7 @@ function sendReleaseToProcess(releaseJSON) {
           }
         });
     });
-
+  */
 }
 
 exports.sendReleaseToProcess = sendReleaseToProcess;
