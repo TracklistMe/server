@@ -1,10 +1,6 @@
 'use strict';
 
 var config = rootRequire('config/config');
-
-console.log(config.SENDGRID_USER);
-console.log(config.SENDGRID_API_KEY);
-
 var sendgrid = require('sendgrid')(config.SENDGRID_API_KEY);
 
 /**

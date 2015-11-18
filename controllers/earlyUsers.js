@@ -7,6 +7,7 @@ var model = rootRequire('models/model');
 var config = rootRequire('config/config');
 var authenticationUtils = rootRequire('utils/authentication-utils');
 var mailer = rootRequire('libs/mailer/sendgrid');
+var formatter = rootRequire('libs/mailer/formatter');
 
 module.exports.controller = function(app) {
 
@@ -14,30 +15,35 @@ module.exports.controller = function(app) {
    * Send a verification email to the specified address with the specified
    * verification code
    */
-  function sendVerificationEmail(userId, email, verificationCode, referredBy, callback) {
+  function sendVerificationEmail(earlyUser, referredBy, callback) {
     callback = callback || function(error, json) {
-      console.log(email);
-      console.log(err);
+      console.log(earlyUser.email);
+      console.log(error);
     };
-    var verificationLink = "https://tracklist.me/verifyAccount/" + userId + 
-      "/" + verificationCode;
-    var message = 'Your verification code is '+verificationLink;
-    if (referredBy) {
-      message = 'You have been referred by ' + referredBy.email + '\n' + message;
-    } 
+    var emailFile = config.EMAIL_TEMPLATES.CONFIRM_EARLY_USER;
+    if (earlyUser.isArtist) {
+      emailFile = config.EMAIL_TEMPLATES.CONFIRM_EARLY_USER_ARTIST;
+    }
+    if (earlyUser.isLabel) {
+      emailFile = config.EMAIL_TEMPLATES.CONFIRM_EARLY_USER_ARTIST;
+    }
+    var emailContent = formatter.formatFile(emailFile, {
+      accountId: earlyUser.id,
+      verificationCode: earlyUser.verificationCode
+    });
     mailer.sendEmail({
-      to: email,
+      to: earlyUser.email,
       from: 'noreply@tracklist.me',
       subject: 'Verify your email address',
-      text: message
+      html: emailContent
     });
 
     // Todo(bortignon): remove this once in production
     mailer.sendEmail({
       to: 'info@nicolabortignon.com',
       from: 'noreply@tracklist.me',
-      subject: 'A new user tried to register: '+email,
-      text: message
+      subject: 'A new user tried to register: ' + earlyUser.email,
+      html: emailContent
     });
   }
 
@@ -47,11 +53,12 @@ module.exports.controller = function(app) {
    * added res is sent, otherwise and error is returned
    * callback must have the following format: function(user, err) { ... }
    */
-  function addEarlyUser(email, verificationCode, referredBy, isArtist, isLabel, callback) {
+  function addEarlyUser(email, verificationCode, referredBy, isArtist, isLabel,
+    callback) {
     var referredById = referredBy ? referredBy.id : null;
     var status = model.EarlyUserStatus.UNVERIFIED;
     if (referredBy) {
-      var status =
+      status =
         referredBy.status === model.EarlyUserStatus.VERIFIED ? 
           model.EarlyUserStatus.UNVERIFIED_FRIEND :
           model.EarlyUserStatus.NOT_INVITED_FRIEND;
@@ -67,7 +74,7 @@ module.exports.controller = function(app) {
       if (status === model.EarlyUserStatus.UNVERIFIED_FRIEND ||
         status === model.EarlyUserStatus.UNVERIFIED) {
         // TODO send email to user with verification code
-        sendVerificationEmail(earlyUser.id, email, verificationCode, referredBy);
+        sendVerificationEmail(earlyUser, referredBy);
       }
       return callback({
         id: earlyUser.id,
@@ -80,7 +87,7 @@ module.exports.controller = function(app) {
       });
     }).catch(function(err) {
       err.status = 500;
-      err.message = "Failed adding early user";
+      err.message = 'Failed adding early user';
       return callback(null, err);
     });
   }
@@ -112,8 +119,7 @@ module.exports.controller = function(app) {
     }).then(function(friends) {
       if (friends) {
         for (var i=0; i<friends.length; i++){
-          sendVerificationEmail(friends[i].id, friends[i].email, 
-            friends[i].verificationCode, earlyUser);
+          sendVerificationEmail(friends[i], earlyUser);
           friends[i].status = model.EarlyUserStatus.UNVERIFIED_FRIEND;
           friends[i].save();
         }
@@ -197,7 +203,8 @@ module.exports.controller = function(app) {
    * POST /earlyUsers/:email/requestVerificationEmail
    * Request a new verification email
    */
-  app.post('/earlyUsers/:email/requestVerificationEmail', function(req, res, next) {
+  app.post('/earlyUsers/:email/requestVerificationEmail',
+    function(req, res, next) {
 
     req.checkParams('email', 'Invalid early user email').notEmpty().isEmail();
     var errors = req.validationErrors();
@@ -225,15 +232,16 @@ module.exports.controller = function(app) {
         )        
       ),
       include: [{
-        model: model.EarlyUser, as: "ReferringUser"
+        model: model.EarlyUser, as: 'ReferringUser'
       }]
     }).then(function(earlyUser) {
       if (earlyUser) {
         var verificationCode = uuid.v4();
         earlyUser.verificationCode = verificationCode;
         earlyUser.save().then(function() {
-          console.log(earlyUser.id, email, verificationCode, earlyUser.ReferringUser);
-          sendVerificationEmail(earlyUser.id, email, verificationCode, earlyUser.ReferringUser);
+          console.log(earlyUser.id, email, verificationCode,
+            earlyUser.ReferringUser);
+          sendVerificationEmail(earlyUser, earlyUser.ReferringUser);
           return res.send({
             message: 'Verification email successfully sent'
           });
@@ -259,19 +267,13 @@ module.exports.controller = function(app) {
    */
   app.put('/earlyUsers/:id/verify', function(req, res, next) {
     req.checkParams('id', 'Invalid early user id').notEmpty().isInt();
-    req.checkBody('verificationCode', 'Invalid early user verification code').notEmpty().isUUID(4);
+    req.checkBody('verificationCode', 'Invalid early user verification code')
+      .notEmpty().isUUID(4);
     req.checkBody('isLabel', 'Invalid isLabel field').optional().isBoolean();
     req.checkBody('isArtist', 'Invalid isArtist field').optional().isBoolean();
     req.checkBody('password', 'Missing password').notEmpty();
-    req.checkBody('password', 'Passoword must be at least 6 characters').isLength(6);
-    var errors = req.validationErrors();
-    if (errors) {
-      var err = new Error();
-      err.status = 400;
-      err.message = 'There have been validation errors';
-      err.validation = errors;
-      return next(err);
-    }
+    req.checkBody('password', 'Passoword must be at least 6 characters')
+      .isLength(6);
 
     var errors = req.validationErrors();
     if (errors) {
@@ -299,7 +301,7 @@ module.exports.controller = function(app) {
             bcrypt.hash(password, salt, function(err, passwordHash) {
               if (err) {
                 err.status = 500;
-                err.message = "Failed saving early user data";
+                err.message = 'Failed saving early user data';
                 return next(err);
               }
               earlyUser.isArtist = earlyUser.isArtist || isArtist;
@@ -312,7 +314,7 @@ module.exports.controller = function(app) {
                 res.send();
               }).catch(function(err) {
                 err.status = 500;
-                err.message = "Failed saving early user data";
+                err.message = 'Failed saving early user data';
                 return next(err);
               });
             });
@@ -364,12 +366,12 @@ module.exports.controller = function(app) {
         return next(err);
       }
       bcrypt.compare(req.body.password, user.password, function(err, result) {
-        if (err || result == false) {
-          var err = {
+        if (err || result === false) {
+          var error = {
             status: 401,
             message: 'Wrong email and/or password'
           };
-          return next(err); 
+          return next(error); 
         }
         return res.send({
           token: authenticationUtils.createEarlyToken(user)
@@ -382,10 +384,12 @@ module.exports.controller = function(app) {
    * POST /earlyUsers/:id/inviteFriend/:friendEmail
    * Invite a friend as a non-authenticated user
    */
-  app.post('/earlyUsers/:id/inviteFriend/:friendEmail', function(req, res, next) {
+  app.post('/earlyUsers/:id/inviteFriend/:friendEmail',
+    function(req, res, next) {
 
     req.checkParams('id', 'Invalid early user id').notEmpty().isInt();
-    req.checkParams('friendEmail', 'Invalid early user email').notEmpty().isEmail();
+    req.checkParams('friendEmail', 'Invalid early user email')
+      .notEmpty().isEmail();
     var errors = req.validationErrors();
     if (errors) {
       var err = new Error();
@@ -476,7 +480,8 @@ module.exports.controller = function(app) {
     authenticationUtils.checkScopes(['early-user']), function(req, res, next) {
 
     model.EarlyUser.find({
-      attributes: ['email', 'isArtist', 'isLabel', 'referredBy', 'referredCount', 'status'],
+      attributes: ['email', 'isArtist', 'isLabel',
+        'referredBy', 'referredCount', 'status'],
       where: {
         id: req.user,
       }
@@ -489,10 +494,12 @@ module.exports.controller = function(app) {
    * POST /earlyUsers/
    * Invite a friend as an authenticated user
    */
-  app.post('/earlyUsers/inviteFriend/:friendEmail', authenticationUtils.ensureAuthenticated,
+  app.post('/earlyUsers/inviteFriend/:friendEmail',
+    authenticationUtils.ensureAuthenticated,
     authenticationUtils.checkScopes(['early-user']), function(req, res, next) {
 
-    req.checkParams('friendEmail', 'Invalid early user email').notEmpty().isEmail();
+    req.checkParams('friendEmail', 'Invalid early user email')
+      .notEmpty().isEmail();
     var errors = req.validationErrors();
     if (errors) {
       var err = new Error();
@@ -523,4 +530,4 @@ module.exports.controller = function(app) {
       });
     });
   });
-}
+};
