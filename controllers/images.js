@@ -40,9 +40,8 @@ function createImageFactory(fieldName, helper) {
         var newFieldPath = helper.remoteImagePath(req, extension);
         entity[newFieldName] = newFieldPath;
         entity.save();
-        var expiration = new Date(Date.now() + 60 * 1000);
         cloudstorage.getSignedPolicy(newFieldPath, {
-            expiration: expiration.getTime(),
+            expires: Date.now() + 60 * 1000,
             startsWith: ['$key', newFieldPath],
             contentLengthRange: {
               min: 0,

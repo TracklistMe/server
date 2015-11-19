@@ -218,7 +218,7 @@ module.exports.controller = function(app) {
   app.get('/labels/:labelId',
     authenticationUtils.ensureAuthenticated,
     function(req, res, next) {
-      req.checkParams('labelId', 'Invalid search string').notEmpty().isInt();
+      req.checkParams('labelId', 'Invalid label id').notEmpty().isInt();
       var errors = req.validationErrors();
       if (errors) {
         var err = new Error();
@@ -256,7 +256,7 @@ module.exports.controller = function(app) {
   app.get('/labels/:labelId/companies',
     authenticationUtils.ensureAuthenticated,
     function(req, res, next) {
-      req.checkParams('labelId', 'Invalid search string').notEmpty().isInt();
+      req.checkParams('labelId', 'Invalid label id').notEmpty().isInt();
       var errors = req.validationErrors();
       if (errors) {
         var err = new Error();
@@ -403,9 +403,8 @@ module.exports.controller = function(app) {
                 label.addDropZoneFiles(dropZoneFile)
                   .then(function(associationFile) {
                     if (associationFile) {
-                      var expiration = new Date(Date.now() + 60 * 1000);
                       cloudstorage.getSignedPolicy(remotePath, {
-                          expiration: expiration.getTime(),
+                          expires: Date.now() + 60 * 1000,
                           startsWith: ['$key', dropZoneFile.path],
                           contentLengthRange: {
                             min: 0,
@@ -427,9 +426,8 @@ module.exports.controller = function(app) {
             file.size = size;
             file.path = remotePath;
             file.save().then(function() {
-              var expiration = new Date(Date.now() + 60 * 1000);
               cloudstorage.getSignedPolicy(remotePath, {
-                  expiration: expiration.getTime(),
+                  expires: Date.now() + 60 * 1000,
                   startsWith: ['$key', file.path],
                   contentLengthRange: {
                     min: 0,

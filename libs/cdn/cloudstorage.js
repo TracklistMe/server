@@ -63,7 +63,7 @@ function createSignedUrl(key, method, timeToLive, callback) {
   }
 
   var file = bucket.file(key);
-  options.expires = Math.round(Date.now() / 1000) + timeToLive;
+  options.expires = Date.now() + timeToLive * 1000;
   options.https = true;
   file.getSignedUrl(options, callback);
 
@@ -74,7 +74,7 @@ exports.createSignedUrl = createSignedUrl;
 function getSignedPolicy(key, options, callback) {
   bucket.file(key).getSignedPolicy(options, function(err, policy) {
     callback(err, {
-      Expires: new Date(options.expiration).toISOString(),
+      Expires: new Date(options.expires).toISOString(),
       action: getBucketUrl(),
       method: 'POST',
       key: key,
