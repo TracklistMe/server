@@ -25,25 +25,29 @@ module.exports.controller = function(app) {
       emailFile = config.EMAIL_TEMPLATES.CONFIRM_EARLY_USER_ARTIST;
     }
     if (earlyUser.isLabel) {
-      emailFile = config.EMAIL_TEMPLATES.CONFIRM_EARLY_USER_ARTIST;
+      emailFile = config.EMAIL_TEMPLATES.CONFIRM_EARLY_USER_LABEL;
     }
     var emailContent = formatter.formatFile(emailFile, {
       accountId: earlyUser.id,
       verificationCode: earlyUser.verificationCode
-    });
-    mailer.sendEmail({
-      to: earlyUser.email,
-      from: 'noreply@tracklist.me',
-      subject: 'Verify your email address',
-      html: emailContent
-    });
+    }, function(err, emailContent) {
+      if (err) {
+        return;
+      }
+      mailer.sendEmail({
+        to: earlyUser.email,
+        from: 'noreply@tracklist.me',
+        subject: 'Verify your email address',
+        html: emailContent
+      });
 
-    // Todo(bortignon): remove this once in production
-    mailer.sendEmail({
-      to: 'info@nicolabortignon.com',
-      from: 'noreply@tracklist.me',
-      subject: 'A new user tried to register: ' + earlyUser.email,
-      html: emailContent
+      // Todo(bortignon): remove this once in production
+      mailer.sendEmail({
+        to: 'info@nicolabortignon.com',
+        from: 'noreply@tracklist.me',
+        subject: 'A new user tried to register: ' + earlyUser.email,
+        html: emailContent
+      });
     });
   }
 
