@@ -471,7 +471,7 @@ module.exports.controller = function(app) {
           })
         }).then(function(files) {
           if (files.length > 0) {
-            //todo(mziccard) check if file really exists in the CDN before confirming
+            //todo(mziccard) check if file really exists in the CDN before
             //todo(mziccard) get metadata?
             var file = files[0];
             file.status = 'UPLOADED';
@@ -484,6 +484,7 @@ module.exports.controller = function(app) {
               return next(err);
             });
           } else {
+            var err = new Error();
             err.status = 404;
             err.message = 'File not found in label dropzone';
             console.log('File not found in label dropzone');
@@ -693,7 +694,6 @@ module.exports.controller = function(app) {
                 err.message = 'Requested user does not exist';
                 return next(err);
               }
-              console.log("BEFORE ADD USER");
               label.addUsers(user).then(function() {
                 res.send();
               });
