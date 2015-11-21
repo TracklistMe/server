@@ -11,180 +11,158 @@ var rabbitmq = rootRequire('libs/message_broker/rabbitmq');
 
 module.exports.controller = function(app) {
   var Sequelize = model.sequelize();
+  var MAX_FILE_SIZE = 104857600;
+  var POLICY_DURATION_MILLIS = 60 * 1000;
+
+  /**
+   * Jumps to next middleware function passing valiation errors
+   *
+   * @param {array} errors - An array of validation errors
+   * @param {function} next - Middleware function to continue the call chain
+   */
+  function throwValidationError(errors, next) {
+    var err = new Error();
+    err.status = 400;
+    err.message = 'There have been validation errors';
+    err.validation = errors;
+    return next(err);
+  }
+
   /**
    * Ensures current user is the owner of the company
-   * Company ID must be passed as req.body.companyId
+   *
+   * @param {object} req - The request object
+   * @param {integer} req.body.companyId - The id of the label's company
+   * @param {object} res - The response object
+   * @param {function} next - Middleware function to continue the call chain
    */
   function ensureCompanyOwner(req, res, next) {
+    req.checkBody('companyId', 'Invalid company id').notEmpty().isInt();
+    var errors = req.validationErrors();
+    if (errors) {
+      return throwValidationError(errors, next);
+    }
     var companyId = req.body.companyId;
     var userId = req.user;
     model.Company.find({
+      include: [{
+        model: model.User,
+        required: true,
+        where: {
+          'id': userId
+        }
+      }],
       where: {
         id: companyId
       }
     }).then(function(company) {
       if (!company) {
         var err = new Error();
-        err.status = 404;
-        err.message = 'Requested company does not exist';
+        err.status = 401;
+        err.message = 'You don\'t have access to the requested resource';
         return next(err);
       }
-      company.getUsers({
-        where: {
-          id: userId
-        }
-      }).then(function(user) {
-        if (!user) {
-          var err = new Error();
-          err.status = 401;
-          err.message = 'You don\'t have access to the requested resource ';
-          return next(err);
-        }
-        return next();
-      });
+      return next();
     });
   }
 
   /**
-   * Ensure current user is an owner of the company who ows the label
-   * Label ID must be passed as req.params.labelId
+   * Ensure current user is an owner of the company who owns the label
+   *
+   * @param {object} req - The request object
+   * @param {integer} req.body.labelId - The id of the label
+   * @param {object} res - The response object
+   * @param {function} next - Middleware function to continue the call chain
    */
   function ensureCompanyOwnerFromLabel(req, res, next) {
     var labelId = req.params.labelId;
     var userId = req.user;
-    model.Label.find({
-      where: {
-        id: labelId
-      }
-    }).then(function(label) {
-      if (!label) {
+    model.Company.find({
+      include: [{
+        model: model.Label,
+        required: true,
+        where: {
+          'id': labelId
+        }
+      }, {
+        model: model.User,
+        required: true,
+        where: {
+          'id': userId
+        }
+      }],
+    }).then(function(company) {
+      if (!company) {
         var err = new Error();
-        err.status = 404;
-        err.message = 'Requested label does not exist';
+        err.status = 401;
+        err.message = 'You don\'t have access to the requested resource';
         return next(err);
       }
-      label.getCompanies().then(function(companies) {
-        if (!companies) {
-          var err = new Error();
-          err.status = 401;
-          err.message = 'You don\'t have access to the requested resource';
-          return next(err);
-        }
-        companies.forEach(function(company) {
-          company.getUsers({
-            where: {
-              id: userId
-            }
-          }).then(function(user) {
-            if (!user) {
-              var err = new Error();
-              err.status = 401;
-              err.message =
-                'You don\'t have access to the requested resource';
-              return next(err);
-            }
-            return next();
-          });
-        });
-      });
+      return next();
     });
   }
 
   /**
    * Ensure current user is a manager of the selected label
-   * Label ID must be passed as req.params.labelId
-   * TODO uncomment and add access control
+   *
+   * @param {object} req - The request object
+   * @param {integer} req.body.labelId - The id of the label
+   * @param {object} res - The response object
+   * @param {function} next - Middleware function to continue the call chain
+   */
   function ensureLabelManager(req, res, next) {
     var labelId = req.params.labelId;
     var userId = req.user;
     model.Label.find({
+      include: [{
+        model: model.User,
+        required: true,
+        where: {
+          'id': userId
+        }
+      }],
       where: {
         id: labelId
       }
     }).then(function(label) {
       if (!label) {
         var err = new Error();
-        err.status = 404;
-        err.message = 'Requested label does not exist';
+        err.status = 401;
+        err.message = 'You don\'t have access to the requested resource ';
         return next(err);
       }
-      label.getUsers({
-        where: {
-          id: userId
-        }
-      }).then(function(users) {
-        if (!users) {
-          var err = new Error();
-          err.status = 401;
-          err.message = 'You don\'t have access to the requested resource ';
-          return next(err);
-        }
-        return next();
-      });
+      return next();
     });
-  } 
-  */
+  }
 
   /**
-   * Ensure current user is either company owner or label manager
-   * Label ID must be passed as req.params.labelId
+   * Ensure current user is either company owner or label manager. This is
+   * implemented by composing ensureLabelManagerOrCompanyOwner and
+   * ensureCompanyOwnerFromLabel. First we check the user is label manager, if
+   * he is not we check he is a company owner.
+   *
+   * @param {object} req - The request object
+   * @param {string} req.body.labelId - The id of the label
+   * @param {object} res - The response object
+   * @param {function} next - Middleware function to continue the call chain
    */
   function ensureLabelManagerOrCompanyOwner(req, res, next) {
-    var labelId = req.params.labelId;
-    var userId = req.user;
-    model.Label.find({
-      where: {
-        id: labelId
+    ensureLabelManager(req, res, function(err) {
+      if (err) {
+        return ensureCompanyOwnerFromLabel(req, res, next);
       }
-    }).then(function(label) {
-      if (!label) {
-        var err = new Error();
-        err.status = 404;
-        err.message = 'Requested label does not exist';
-        return next(err);
-      }
-      label.getUsers({
-        where: {
-          id: userId
-        }
-      }).then(function(users) {
-        if (!users) {
-          // Current user is not label manager, check if he is company owner
-          label.getCompanies().then(function(companies) {
-            if (!companies) {
-              var err = new Error();
-              err.status = 401;
-              err.message =
-                'You don\'t have access to the requested resource ';
-              return next(err);
-            }
-            companies.forEach(function(company) {
-              company.getUsers({
-                where: {
-                  id: userId
-                }
-              }).then(function(user) {
-                if (!user) {
-                  var err = new Error();
-                  err.status = 401;
-                  err.message =
-                    'You don\'t have access to the requested resource ';
-                  return next(err);
-                }
-                return next();
-              });
-            });
-          });
-        }
-        return next();
-      });
+      return next();
     });
   }
 
   /**
    * GET /labels/search/:searchString
    * Return the list of labels whose displayName resambles the search string
-   * TODO: paginate request
+   *
+   * @param {object} req - The request object
+   * @param {string} req.body.searchString - The string to search, supposed
+   *     name of the label
+   * @param {object} res - The response object
    */
   app.get('/labels/search/:searchString', function(req, res) {
     var searchString = req.params.searchString;
@@ -197,8 +175,13 @@ module.exports.controller = function(app) {
 
   /**
    * GET /labels/search/:searchString
-   * Return the list of labels whose displayName exactly matches the search 
+   * Return the list of labels whose displayName exactly matches the search
    * string
+   *
+   * @param {object} req - The request object
+   * @param {integer} req.body.searchString - The string to search, supposed
+   *     name of the label
+   * @param {object} res - The response object
    */
   app.get('/labels/searchExact/:searchString', function(req, res) {
     var searchString = req.params.searchString;
@@ -212,32 +195,31 @@ module.exports.controller = function(app) {
   });
 
   /**
-   * GET /labels/:id
+   * GET /labels/:labelId
    * Return the label corresponding to the passed id
+   *
+   * @param {object} req - The request object
+   * @param {object} res - The response object
+   * @param {function} next - Middleware function to continue the call chain
    */
-  app.get('/labels/:labelId',
-    authenticationUtils.ensureAuthenticated,
+  app.get('/labels/:labelId', authenticationUtils.ensureAuthenticated,
     function(req, res, next) {
       req.checkParams('labelId', 'Invalid label id').notEmpty().isInt();
       var errors = req.validationErrors();
       if (errors) {
-        var err = new Error();
-        err.status = 400;
-        err.message = 'There have been validation errors';
-        err.validation = errors;
-        return next(err);
+        return throwValidationError(errors, next);
       }
-      var LabelId = req.params.labelId;
+      var labelId = req.params.labelId;
       model.Label.find({
         where: {
-          id: LabelId
+          id: labelId
         }
       }).then(function(label) {
         if (label) {
           label.getUsers({
             attributes: ['displayName']
           }).then(function(associatedUsers) {
-            label.dataValues.labelManagers = (associatedUsers);
+            label.dataValues.labelManagers = associatedUsers;
             res.send(label);
           });
         } else {
@@ -250,8 +232,12 @@ module.exports.controller = function(app) {
     });
 
   /**
-   * GET /labels/:id/companies
-   * Return all the companies the label with id = :id belongs to.
+   * GET /labels/:labelId/companies
+   * Return all the companies the provided label belongs to
+   *
+   * @param {object} req - The request object
+   * @param {object} res - The response object
+   * @param {function} next - Middleware function to continue the call chain
    */
   app.get('/labels/:labelId/companies',
     authenticationUtils.ensureAuthenticated,
@@ -259,23 +245,19 @@ module.exports.controller = function(app) {
       req.checkParams('labelId', 'Invalid label id').notEmpty().isInt();
       var errors = req.validationErrors();
       if (errors) {
-        var err = new Error();
-        err.status = 400;
-        err.message = 'There have been validation errors';
-        err.validation = errors;
-        return next(err);
+        return throwValidationError(errors, next);
       }
-      var LabelId = req.params.labelId;
+      var labelId = req.params.labelId;
       model.Label.find({
         where: {
-          id: LabelId
+          id: labelId
         }
       }).then(function(label) {
         if (label) {
           label.getCompanies({
             attributes: ['displayName', 'id']
-          }).then(function(associatedCompany) {
-            res.send(associatedCompany);
+          }).then(function(associatedCompanies) {
+            res.send(associatedCompanies);
           });
         } else {
           var err = new Error();
@@ -288,9 +270,13 @@ module.exports.controller = function(app) {
 
   /**
    * POST /labels/
-   * Add label in post payload to the label list of the company
-   * TODO: permission controll, check current user is owner of the company and 
-   * company owns the label
+   * Adds a new label (passed in POST) to the specified company (id in POST)
+   *
+   * @param {object} req - The request object
+   * @param {integer} req.body.companyId - The company's id
+   * @param {string} req.body.labelName - The new label's name
+   * @param {object} res - The response object
+   * @param {function} next - Middleware function to continue the call chain
    */
   app.post('/labels/',
     authenticationUtils.ensureAuthenticated, ensureCompanyOwner,
@@ -299,40 +285,29 @@ module.exports.controller = function(app) {
       req.checkBody('labelName', 'Missing label name').notEmpty();
       var errors = req.validationErrors();
       if (errors) {
-        var err = new Error();
-        err.status = 400;
-        err.message = 'There have been validation errors';
-        err.validation = errors;
-        return next(err);
+        return throwValidationError(errors, next);
       }
       var companyId = req.body.companyId;
       var labelName = req.body.labelName;
 
-      console.log('companyId' + companyId);
-      console.log('labelName' + labelName);
-
-      model.Label.find({
+      model.Label.findOrCreate({
         where: {
           displayName: labelName
         }
       }).then(function(label) {
-        if (!label) {
-          model.Label.create({
-            displayName: labelName
-          }).then(function(label) {
-            model.Company.find({
-              where: {
-                id: companyId
-              }
-            }).then(function(company) {
-              company.addLabels([label]).then(function() {
-                //model.User.find({where: {id: req.user}})
-                //.then(function(user) {
-                //label.addUsers([user]).then(function(user) {
-                res.send();
-                //});
-                //});                           
-              });
+        // findOrCreate promise returns an array where the first element is the
+        // found/created entity, while the second element is true iff it has
+        // just been created
+        var created = label[1];
+        label = label[0];
+        if (created) {
+          model.Company.find({
+            where: {
+              id: companyId
+            }
+          }).then(function(company) {
+            company.addLabel(label).then(function() {
+              res.send();                         
             });
           });
         } else {
@@ -345,8 +320,17 @@ module.exports.controller = function(app) {
     });
 
   /**
-   * POST /labels/:idLabel/dropZone
-   * Upload a file to the dropZone for the label with id :idLabel
+   * POST /labels/:labelId/dropZone/createFile
+   * Creates a file in the dropzone, sends in POST file information and gets a
+   * signed policy to upload the file to the CDN
+   *
+   * @param {object} req - The request object
+   * @param {string} req.body.filename - The new label's name
+   * @param {string} req.body.extension - The file's extension
+   * @param {integer} req.body.size - The file's size used to check whether it
+   *     is valid and to create the signed policy (thus size cannot change)
+   * @param {object} res - The response object
+   * @param {function} next - Middleware function to continue the call chain
    */
   app.post('/labels/:labelId/dropZone/createFile',
     authenticationUtils.ensureAuthenticated, ensureLabelManagerOrCompanyOwner,
@@ -359,11 +343,7 @@ module.exports.controller = function(app) {
       req.checkBody('size', 'Filesize is invalid').notEmpty().isInt();
       var errors = req.validationErrors();
       if (errors) {
-        var err = new Error();
-        err.status = 400;
-        err.message = 'There have been validation errors';
-        err.validation = errors;
-        return next(err);
+        return throwValidationError(errors, next);
       }
 
       var labelId = req.params.labelId;
@@ -373,85 +353,94 @@ module.exports.controller = function(app) {
 
       var remotePath =
         helper.remoteDropZonePath(labelId, filename + '.' + extension);
-
       model.Label.find({
+        include: [{
+          model: model.DropZoneFile,
+          required: false,
+          where: {
+            fileName: filename,
+            extension: extension
+          }
+        }],
         where: {
           id: labelId
         }
       }).then(function(label) {
-        label.getDropZoneFiles({
-          where: model.Sequelize.and({
-            fileName: filename
-          }, {
-            extension: extension
-          })
-        }).then(function(files) {
-          if (files.length === 0) {
-            // Create file
-            model.DropZoneFile.create({
-              fileName: filename,
-              extension: extension,
-              status: 'UPLOADING',
-              size: size,
-              path: remotePath
-            }).then(function(dropZoneFile) {
-              model.Label.find({
-                where: {
-                  id: labelId
-                }
-              }).then(function(label) {
-                label.addDropZoneFiles(dropZoneFile)
-                  .then(function(associationFile) {
-                    if (associationFile) {
-                      cloudstorage.getSignedPolicy(remotePath, {
-                          expires: Date.now() + 60 * 1000,
-                          startsWith: ['$key', dropZoneFile.path],
-                          contentLengthRange: {
-                            min: 0,
-                            max: 104857600
-                          }
-                        },
-                        function(err, body) {
-                          console.log(body);
-                          res.json(body);
-                        });
-                    }
-                  });
-              });
-            });
-          } else {
-            // update file
-            var file = files[0];
-            file.status = 'UPLOADING';
-            file.size = size;
-            file.path = remotePath;
-            file.save().then(function() {
-              cloudstorage.getSignedPolicy(remotePath, {
-                  expires: Date.now() + 60 * 1000,
-                  startsWith: ['$key', file.path],
-                  contentLengthRange: {
-                    min: 0,
-                    max: 104857600
+        if (!label) {
+          var err = new Error();
+          err.status = 404;
+          err.message = 'Requested label does not exist';
+          return next(err);
+        }
+        if (label.DropZoneFiles.length === 0) {
+          // Create file
+          model.DropZoneFile.create({
+            fileName: filename,
+            extension: extension,
+            status: 'UPLOADING',
+            size: size,
+            path: remotePath
+          }).then(function(dropZoneFile) {
+            model.Label.find({
+              where: {
+                id: labelId
+              }
+            }).then(function(label) {
+              label.addDropZoneFiles(dropZoneFile)
+                .then(function(associationFile) {
+                  if (associationFile) {
+                    cloudstorage.getSignedPolicy(remotePath, {
+                      expires: Date.now() + POLICY_DURATION_MILLIS,
+                      startsWith: ['$key', dropZoneFile.path],
+                      contentLengthRange: {
+                        min: 0,
+                        max: MAX_FILE_SIZE
+                      }
+                    },
+                    function(err, body) {
+                      res.json(body);
+                    });
                   }
-                },
-                function(err, body) {
-                  console.log(body);
-                  res.json(body);
                 });
-            }).error(function(err) {
-              err.status = 500;
-              err.message = 'File upload failed';
-              return next(err);
             });
-          }
-        });
+          });
+        } else {
+          // update file
+          var file = label.DropZoneFiles[0];
+          file.status = 'UPLOADING';
+          file.size = size;
+          file.path = remotePath;
+          file.save().then(function() {
+            cloudstorage.getSignedPolicy(remotePath, {
+              expires: Date.now() + POLICY_DURATION_MILLIS,
+              startsWith: ['$key', file.path],
+              contentLengthRange: {
+                min: 0,
+                max: MAX_FILE_SIZE
+              }
+            },
+            function(err, body) {
+              res.json(body);
+            });
+          }).catch(function(err) {
+            err.status = 500;
+            err.message = 'File upload failed';
+            return next(err);
+          });
+        }
       });
     });
 
   /**
    * POST /labels/:idLabel/dropZone
    * Confirms the upload to the CDN of a file in the label's dropzone
-   * If not confirmed the file is never shown to the user
+   * If not confirmed the file is never shown to the user.
+   *
+   * @param {object} req - The request object
+   * @param {string} req.body.filename - The new label's name
+   * @param {string} req.body.extension - The file's extension
+   * @param {object} res - The response object
+   * @param {function} next - Middleware function to continue the call chain
    */
   app.post('/labels/:labelId/dropZone/confirmFile',
     authenticationUtils.ensureAuthenticated, ensureLabelManagerOrCompanyOwner,
@@ -462,11 +451,7 @@ module.exports.controller = function(app) {
       req.checkBody('extension', 'Missing extension').notEmpty().isAlpha();
       var errors = req.validationErrors();
       if (errors) {
-        var err = new Error();
-        err.status = 400;
-        err.message = 'There have been validation errors';
-        err.validation = errors;
-        return next(err);
+        return throwValidationError(errors, next);
       }
 
       var labelId = req.params.labelId;
@@ -486,16 +471,13 @@ module.exports.controller = function(app) {
           })
         }).then(function(files) {
           if (files.length > 0) {
-
-            // TODO check if file really exists in the CDN before confirming
-            // TODO get metadata? compute filesize? MD5?
-
+            //todo(mziccard) check if file really exists in the CDN before confirming
+            //todo(mziccard) get metadata?
             var file = files[0];
             file.status = 'UPLOADED';
-            // TODO get metadata and fill other fields?
             file.save().then(function() {
               res.send();
-            }).error(function(err) {
+            }).catch(function(err) {
               err.status = 500;
               err.message = 'File upload failed';
               console.log('File upload failed');
@@ -512,9 +494,13 @@ module.exports.controller = function(app) {
     });
 
   /**
-   * DELETE /labels/:idLabel/dropZone
-   * Delete a file from the dropZone (table and CDN) for the label with id 
-   * :idLabel
+   * DELETE /labels/:labelId/dropZone/:id
+   * Delete a file from the dropZone (table and CDN) for the label with the
+   * provided id
+   *
+   * @param {object} req - The request object
+   * @param {object} res - The response object
+   * @param {function} next - Middleware function to continue the call chain
    */
   app.delete('/labels/:labelId/dropZone/:id',
     authenticationUtils.ensureAuthenticated, ensureLabelManagerOrCompanyOwner,
@@ -524,11 +510,7 @@ module.exports.controller = function(app) {
       req.checkParams('id', 'DropZoneFile id is invalid').notEmpty().isInt();
       var errors = req.validationErrors();
       if (errors) {
-        var err = new Error();
-        err.status = 400;
-        err.message = 'There have been validation errors';
-        err.validation = errors;
-        return next(err);
+        return throwValidationError(errors, next);
       }
 
       var labelId = req.params.labelId;
@@ -547,16 +529,9 @@ module.exports.controller = function(app) {
           }).then(function(files) {
             if (files && files.length > 0) {
               var file = files[0];
-              cloudstorage.remove(file.path, function(err) {
-                if (err) {
-                  console.log(
-                    'Failed removing ' +
-                    file.path +
-                    ' from cloudstorage');
-                }
-                file.destroy();
-                res.send();
-              });
+              file.destroy();
+              cloudstorage.remove(file.path);
+              res.send();
             } else {
               var err = new Error();
               err.status = 404;
@@ -570,8 +545,12 @@ module.exports.controller = function(app) {
     });
 
   /**
-   * GET /labels/:idLabel/processReleases/info
+   * GET /labels/:labelId/processReleases/info
    * Validates the files in the dropZone to a beatport compliant playlist
+   *
+   * @param {object} req - The request object
+   * @param {object} res - The response object
+   * @param {function} next - Middleware function to continue the call chain
    */
   app.get('/labels/:labelId/processReleases/info',
     authenticationUtils.ensureAuthenticated, ensureLabelManagerOrCompanyOwner,
@@ -580,23 +559,15 @@ module.exports.controller = function(app) {
       req.checkParams('labelId', 'Label id is invalid').notEmpty().isInt();
       var errors = req.validationErrors();
       if (errors) {
-        var err = new Error();
-        err.status = 400;
-        err.message = 'There have been validation errors';
-        err.validation = errors;
-        return next(err);
+        return throwValidationError(errors, next);
       }
 
-      var idLabel = req.params.labelId;
+      var labelId = req.params.labelId;
       model.Label.find({
         where: {
-          id: idLabel
+          id: labelId
         }
       }).then(function(label) {
-        console.log('==================================================');
-        console.log(
-          'The label found for release infos is ' +
-          JSON.stringify(label.dataValues));
         if (!label) {
           var err = new Error();
           err.status = 404;
@@ -609,41 +580,40 @@ module.exports.controller = function(app) {
           }, {
             status: 'UPLOADED'
           })
-
         }).then(function(xmls) {
-          console.log(xmls);
           beatport.validate(xmls).then(function(results) {
             res.send(results);
+          }).catch(function(err) {
+            return next(err);
           });
         });
       });
     });
 
   /**
-   * POST /labels/:idLabel/processReleases/
+   * POST /labels/:labelId/processReleases/
    * Asks the server to process files in the dropZone as a new release
+   *
+   * @param {object} req - The request object
+   * @param {object} res - The response object
+   * @param {function} next - Middleware function to continue the call chain
    */
-  app.post('/labels/:labelId/processReleases/',
+  app.post('/labels/:labelId/processReleases',
     authenticationUtils.ensureAuthenticated, ensureLabelManagerOrCompanyOwner,
     function(req, res, next) {
 
       req.checkParams('labelId', 'Label id is invalid').notEmpty().isInt();
       var errors = req.validationErrors();
       if (errors) {
-        var err = new Error();
-        err.status = 400;
-        err.message = 'There have been validation errors';
-        err.validation = errors;
-        return next(err);
+        return throwValidationError(errors, next);
       }
 
-      var idLabel = req.params.labelId;
+      var labelId = req.params.labelId;
       model.Label.find({
         where: {
-          id: idLabel
+          id: labelId
         }
       }).then(function(label) {
-        console.log('FOUND LABEL');
         if (!label) {
           var err = new Error();
           err.status = 404;
@@ -655,49 +625,17 @@ module.exports.controller = function(app) {
             extension: 'xml'
           }
         }).then(function(xmls) {
-          console.log('XML parsing');
-          beatport.process(xmls, idLabel).then(function(results) {
-            console.log('--server response');
+          beatport.process(xmls, labelId).then(function(results) {
             results.forEach(function(result) {
-              console.log('FOR EACH RESULT ');
-              console.log(result);
-              // TODO REDUNDANT SAVE JSON AND SEND RABBIT 
-              // 
-              /*
-              model.Release.find({
-                where: {
-                  id: result.value.dataValues.id
-                },
-                attributes: ['id', 'title', 'catalogNumber', 'status'],
-                order: 'position',
-                include: [{
-                  model: model.Track,
-                  include: [{
-                    model: model.Artist,
-                    as: 'Remixer'
-                  }, {
-                    model: model.Artist,
-                    as: 'Producer'
-                  }]
-                }, {
-                  model: model.Label
-                }]
-              }).then(function(release) {
-                console.log('FIND');
-                console.log(result.value.dataValues.id);
-                release.json = JSON.stringify(release);
-                rabbitmq.sendReleaseToProcess(release);
-                release.save();
-              });
-            */
               model.Release.consolideJSON(
                 result.value.dataValues.id, 
                 function(jsonRelease) {
                   rabbitmq.sendReleaseToProcess(jsonRelease);
               });
             });
-            console.log('----');
             res.send(results);
+          }).catch(function(err) {
+            return next(err);
           });
         });
       });
@@ -706,27 +644,25 @@ module.exports.controller = function(app) {
   /**
    * POST /labels/:idLabel/labelManagers
    * Adds a new manager for the label
+   *
+   * @param {object} req - The request object
+   * @param {object} res - The response object
+   * @param {function} next - Middleware function to continue the call chain
    */
   app.post('/labels/:labelId/labelManagers',
     authenticationUtils.ensureAuthenticated, ensureCompanyOwnerFromLabel,
     function(req, res, next) {
 
       req.checkParams('labelId', 'Label id is invalid').notEmpty().isInt();
-      req.checkBody(
-        'newLabelManager',
-        'newLabelManager id is invalid').notEmpty().isInt();
+      req.checkBody( 'newLabelManager', 'newLabelManager id is invalid')
+        .notEmpty().isInt();
       var errors = req.validationErrors();
       if (errors) {
-        var err = new Error();
-        err.status = 400;
-        err.message = 'There have been validation errors';
-        err.validation = errors;
-        return next(err);
+        return throwValidationError(errors, next);
       }
 
       var newLabelManagerId = req.body.newLabelManager;
       var labelId = req.params.labelId;
-      console.log(labelId);
 
       model.Label.find({
         where: {
@@ -745,23 +681,27 @@ module.exports.controller = function(app) {
             id: newLabelManagerId
           }
         }).then(function(users) {
-
           if (users.length === 0) {
             model.User.find({
               where: {
                 id: newLabelManagerId
               }
             }).then(function(user) {
+              if (!user) {
+                var err = new Error();
+                err.status = 404;
+                err.message = 'Requested user does not exist';
+                return next(err);
+              }
+              console.log("BEFORE ADD USER");
               label.addUsers(user).then(function() {
                 res.send();
               });
             });
           } else {
-            console.log('This user was already associated to this label!');
             var err = new Error();
             err.status = 409;
-            err.message =
-              'The user is already a manager of the selected label';
+            err.message = 'The user is already a manager of the label';
             return next(err);
           }
         });
@@ -769,8 +709,12 @@ module.exports.controller = function(app) {
     });
 
   /**
-   * DELETE /labels/:idLabels/labelManagers/:idUser
+   * DELETE /labels/:labelId/labelManagers/:userId
    * Delete a manager from the label
+   *
+   * @param {object} req - The request object
+   * @param {object} res - The response object
+   * @param {function} next - Middleware function to continue the call chain
    */
   app.delete('/labels/:labelId/labelManagers/:userId',
     authenticationUtils.ensureAuthenticated, ensureCompanyOwnerFromLabel,
@@ -780,11 +724,7 @@ module.exports.controller = function(app) {
       req.checkParams('userId', 'User id is invalid').notEmpty().isInt();
       var errors = req.validationErrors();
       if (errors) {
-        var err = new Error();
-        err.status = 400;
-        err.message = 'There have been validation errors';
-        err.validation = errors;
-        return next(err);
+        return throwValidationError(errors, next);
       }
 
       var userId = req.params.userId;
@@ -822,6 +762,10 @@ module.exports.controller = function(app) {
   /**
    * GET /labels/:id/dropZoneFiles
    * Get the list of files in the dropZone
+   *
+   * @param {object} req - The request object
+   * @param {object} res - The response object
+   * @param {function} next - Middleware function to continue the call chain
    */
   app.get('/labels/:labelId/dropZoneFiles',
     authenticationUtils.ensureAuthenticated, ensureLabelManagerOrCompanyOwner,
@@ -830,11 +774,7 @@ module.exports.controller = function(app) {
       req.checkParams('labelId', 'Label id is invalid').notEmpty().isInt();
       var errors = req.validationErrors();
       if (errors) {
-        var err = new Error();
-        err.status = 400;
-        err.message = 'There have been validation errors';
-        err.validation = errors;
-        return next(err);
+        return throwValidationError(errors, next);
       }
 
       var LabelId = req.params.labelId;
@@ -863,6 +803,10 @@ module.exports.controller = function(app) {
   /**
    * GET /labels/id/catalog
    * Get all releases associated to the label
+   *
+   * @param {object} req - The request object
+   * @param {object} res - The response object
+   * @param {function} next - Middleware function to continue the call chain
    */
   app.get('/labels/:labelId/catalog',
     authenticationUtils.ensureAuthenticated, ensureLabelManagerOrCompanyOwner,
@@ -871,11 +815,7 @@ module.exports.controller = function(app) {
       req.checkParams('labelId', 'Label id is invalid').notEmpty().isInt();
       var errors = req.validationErrors();
       if (errors) {
-        var err = new Error();
-        err.status = 400;
-        err.message = 'There have been validation errors';
-        err.validation = errors;
-        return next(err);
+        return throwValidationError(errors, next);
       }
 
       var LabelId = req.params.labelId;
@@ -900,42 +840,39 @@ module.exports.controller = function(app) {
     });
 
   /**
-   * Label's revenues, with filtering possibility, reported in expanded version
-   * (that is grouped by Same Release and Same day).
-   * If not startDate or endDate is provided it does return the amount for the 
-   * last quarter
-  */
-  app.get('/labels/:id/revenues/expanded/:startDate?/:endDate?',
-    // authenticationUtils.ensureAuthenticated, authenticationUtils.ensureAdmin,
+   * GET /labels/:labelId/revenues/expanded/:startDate?/:endDate?
+   * Get label's revenues, with filtering possibility, reported in expanded
+   * version (that is grouped by Release and Date).
+   * If startDate and endDate are not provided this endpoint returns the amount
+   * for the last quarter
+   *
+   * @param {object} req - The request object
+   * @param {object} res - The response object
+   */
+  app.get('/labels/:labelId/revenues/expanded/:startDate?/:endDate?',
+    authenticationUtils.ensureAuthenticated, ensureLabelManagerOrCompanyOwner,
     function(req, res) {
-      console.log(req.params.startDate);
+      // Try to format input dates, if format does not match (stricly) then
+      // startDate.isValid() and endDate.isValid() are false
       var startDate = moment(req.params.startDate, 'DD-MM-YYYY', true);
       var endDate = moment(req.params.endDate, 'DD-MM-YYYY', true).endOf('day');
 
-      console.log('IS VALID: ' + startDate.isValid());
       if (startDate && startDate.isValid()) {
-        //startDate is valid
+        // startDate is valid
         startDate = startDate.format();
-
-        console.log(endDate + 'enddate');
-        console.log(endDate.isValid());
         if (endDate && endDate.isValid()) {
-          //end Date is Valid
-          console.log('SO I FORMAT');
+          // endDate is Valid
           endDate = endDate.format();
-          console.log(endDate);
         } else {
           endDate = moment().utcOffset(0).format();
         }
       } else {
         startDate = moment().startOf('quarter').format();
-        //CloudSQL date is different that Cloud Engine 
         endDate = moment().utcOffset(0).format();
-        console.log(endDate);
-        // reset both startDate and endDate
       }
-      var labelId = req.params.id;
+      var labelId = req.params.labelId;
       model.Transaction.findAll({
+        // todo(mziccard) change date format, change column name to dateFormat
         attributes: ['ReleaseId', [Sequelize.fn('DATE_FORMAT',
             Sequelize.col('Transaction.createdAt'), '%d/%m/%y'), 'dataColumn'],
           [Sequelize.fn('SUM', Sequelize.col('finalPrice')), 'price']
@@ -958,43 +895,38 @@ module.exports.controller = function(app) {
     });
 
   /**
+   * GET /labels/:labelId/revenues/total/:startDate?/:endDate?
    * The total label's revenues, with possibility to filter by date.
+   *
+   * @param {object} req - The request object
+   * @param {object} res - The response object
    */
-  app.get('/labels/:id/revenues/total/:startDate?/:endDate?',
-    //authenticationUtils.ensureAuthenticated, authenticationUtils.ensureAdmin,
+  app.get('/labels/:labelId/revenues/total/:startDate?/:endDate?',
+    authenticationUtils.ensureAuthenticated, ensureLabelManagerOrCompanyOwner,
     function(req, res) {
-      console.log(req.params.startDate);
+      // Try to format input dates, if format does not match (stricly) then
+      // startDate.isValid() and endDate.isValid() are false
       var startDate = moment(req.params.startDate, 'DD-MM-YYYY', true);
       var endDate = moment(req.params.endDate, 'DD-MM-YYYY', true).endOf('day');
 
-      console.log('IS VALID: ' + startDate.isValid());
       if (startDate && startDate.isValid()) {
-        //startDate is valid
+        // startDate is valid
         startDate = startDate.format();
-
-        console.log(endDate + 'enddate');
-        console.log(endDate.isValid());
         if (endDate && endDate.isValid()) {
-          //end Date is Valid
-          console.log('SO I FORMAT');
+          // endDate is Valid
           endDate = endDate.format();
-          console.log(endDate);
         } else {
           endDate = moment().utcOffset(0).format();
         }
       } else {
         startDate = moment().startOf('quarter').format();
-        //CloudSQL date is different that Cloud Engine 
         endDate = moment().utcOffset(0).format();
-        console.log(endDate);
-        // reset both startDate and endDate
       }
-      var labelId = req.params.id;
+      var labelId = req.params.labelId;
       model.Transaction.findAll({
         attributes: [
           [Sequelize.fn('SUM', Sequelize.col('finalPrice')), 'price']
         ],
-
         where: {
           LabelId: labelId,
           createdAt: {
