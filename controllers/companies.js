@@ -1,13 +1,10 @@
 'use strict';
 
-var fs = require('fs-extra');
 var moment = require('moment');
 var imagesController = rootRequire('controllers/images');
 var helper = rootRequire('helpers/companies');
-var fileUtils = rootRequire('utils/file-utils');
 var authenticationUtils = rootRequire('utils/authentication-utils');
 var model = rootRequire('models/model');
-var cloudstorage = rootRequire('libs/cdn/cloudstorage');
 
 module.exports.controller = function(app) {
   var Sequelize = model.sequelize();
@@ -415,8 +412,8 @@ module.exports.controller = function(app) {
     authenticationUtils.ensureAuthenticated,
     ensureCompanyOwner,
     function(req, res, next) {
-      var startDate = moment(req.params.startDate, "DD-MM-YYYY", true);
-      var endDate = moment(req.params.endDate, "DD-MM-YYYY", true).endOf('day');
+      var startDate = moment(req.params.startDate, 'DD-MM-YYYY', true);
+      var endDate = moment(req.params.endDate, 'DD-MM-YYYY', true).endOf('day');
 
       if (startDate && startDate.isValid()) {
         //startDate is valid
