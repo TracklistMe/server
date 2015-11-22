@@ -29,7 +29,7 @@ module.exports.controller = function(app) {
   }
 
   /**
-   * Ensures current user is the owner of the company
+   * Ensures current user is the owner of the company (or admin)
    *
    * @param {object} req - The request object
    * @param {integer} req.body.companyId - The id of the label's company
@@ -42,32 +42,38 @@ module.exports.controller = function(app) {
     if (errors) {
       return throwValidationError(errors, next);
     }
-    var companyId = req.body.companyId;
-    var userId = req.user;
-    model.Company.find({
-      include: [{
-        model: model.User,
-        required: true,
+    authenticationUtils.checkScopes(['admin'])(req, res, function(err) {
+      if (!err) {
+        return next();
+      }
+      var companyId = req.body.companyId;
+      var userId = req.user;
+      model.Company.find({
+        include: [{
+          model: model.User,
+          required: true,
+          where: {
+            id: userId
+          }
+        }],
         where: {
-          'id': userId
+          id: companyId
         }
-      }],
-      where: {
-        id: companyId
-      }
-    }).then(function(company) {
-      if (!company) {
-        var err = new Error();
-        err.status = 401;
-        err.message = 'You don\'t have access to the requested resource';
-        return next(err);
-      }
-      return next();
+      }).then(function(company) {
+        if (!company) {
+          var err = new Error();
+          err.status = 401;
+          err.message = 'You don\'t have access to the requested resource';
+          return next(err);
+        }
+        return next();
+      });
     });
   }
 
   /**
-   * Ensure current user is an owner of the company who owns the label
+   * Ensure current user is an owner of the company who owns the label (or
+   * admin)
    *
    * @param {object} req - The request object
    * @param {integer} req.body.labelId - The id of the label
@@ -77,33 +83,38 @@ module.exports.controller = function(app) {
   function ensureCompanyOwnerFromLabel(req, res, next) {
     var labelId = req.params.labelId;
     var userId = req.user;
-    model.Company.find({
-      include: [{
-        model: model.Label,
-        required: true,
-        where: {
-          'id': labelId
-        }
-      }, {
-        model: model.User,
-        required: true,
-        where: {
-          'id': userId
-        }
-      }],
-    }).then(function(company) {
-      if (!company) {
-        var err = new Error();
-        err.status = 401;
-        err.message = 'You don\'t have access to the requested resource';
-        return next(err);
+    authenticationUtils.checkScopes(['admin'])(req, res, function(err) {
+      if (!err) {
+        return next();
       }
-      return next();
+      model.Company.find({
+        include: [{
+          model: model.Label,
+          required: true,
+          where: {
+            id: labelId
+          }
+        }, {
+          model: model.User,
+          required: true,
+          where: {
+            id: userId
+          }
+        }],
+      }).then(function(company) {
+        if (!company) {
+          var err = new Error();
+          err.status = 401;
+          err.message = 'You don\'t have access to the requested resource';
+          return next(err);
+        }
+        return next();
+      });
     });
   }
 
   /**
-   * Ensure current user is a manager of the selected label
+   * Ensure current user is a manager of the selected label (or admin)
    *
    * @param {object} req - The request object
    * @param {integer} req.body.labelId - The id of the label
@@ -113,31 +124,36 @@ module.exports.controller = function(app) {
   function ensureLabelManager(req, res, next) {
     var labelId = req.params.labelId;
     var userId = req.user;
-    model.Label.find({
-      include: [{
-        model: model.User,
-        required: true,
+    authenticationUtils.checkScopes(['admin'])(req, res, function(err) {
+      if (!err) {
+        return next();
+      }
+      model.Label.find({
+        include: [{
+          model: model.User,
+          required: true,
+          where: {
+            id: userId
+          }
+        }],
         where: {
-          'id': userId
+          id: labelId
         }
-      }],
-      where: {
-        id: labelId
-      }
-    }).then(function(label) {
-      if (!label) {
-        var err = new Error();
-        err.status = 401;
-        err.message = 'You don\'t have access to the requested resource ';
-        return next(err);
-      }
-      return next();
+      }).then(function(label) {
+        if (!label) {
+          var err = new Error();
+          err.status = 401;
+          err.message = 'You don\'t have access to the requested resource ';
+          return next(err);
+        }
+        return next();
+      });
     });
   }
 
   /**
-   * Ensure current user is either company owner or label manager. This is
-   * implemented by composing ensureLabelManagerOrCompanyOwner and
+   * Ensure current user is either admin, company owner or label manager. This
+   * is implemented by composing ensureLabelManagerOrCompanyOwner and
    * ensureCompanyOwnerFromLabel. First we check the user is label manager, if
    * he is not we check he is a company owner.
    *
@@ -176,6 +192,9 @@ module.exports.controller = function(app) {
       where: ['displayName LIKE ?', '%' + searchString + '%']
     }).then(function(labels) {
       res.send(labels);
+    }).catch(function(err) {
+      err.status = 500;
+      return next(err);
     });
   });
 
@@ -203,6 +222,9 @@ module.exports.controller = function(app) {
       }
     }).then(function(labels) {
       res.send(labels);
+    }).catch(function(err) {
+      err.status = 500;
+      return next(err);
     });
   });
 
@@ -231,8 +253,12 @@ module.exports.controller = function(app) {
           label.getUsers({
             attributes: ['displayName']
           }).then(function(associatedUsers) {
+            // todo(mziccard) Homogeneous naming?
             label.dataValues.labelManagers = associatedUsers;
             res.send(label);
+          }).catch(function(err) {
+            err.status = 500;
+            return next(err);
           });
         } else {
           var err = new Error();
@@ -240,6 +266,9 @@ module.exports.controller = function(app) {
           err.message = 'Requested label does not exist';
           return next(err);
         }
+      }).catch(function(err) {
+        err.status = 500;
+        return next(err);
       });
     });
 
@@ -270,13 +299,19 @@ module.exports.controller = function(app) {
             attributes: ['displayName', 'id']
           }).then(function(associatedCompanies) {
             res.send(associatedCompanies);
-          });
+            }).catch(function(err) {
+              err.status = 500;
+              return next(err);
+            });
         } else {
           var err = new Error();
           err.status = 404;
           err.message = 'Requested label does not exist';
           return next(err);
         }
+      }).catch(function(err) {
+        err.status = 500;
+        return next(err);
       });
     });
 
@@ -320,6 +355,9 @@ module.exports.controller = function(app) {
           }).then(function(company) {
             company.addLabel(label).then(function() {
               res.send();                         
+            }).catch(function(err) {
+              err.status = 500;
+              return next(err);
             });
           });
         } else {
@@ -328,6 +366,9 @@ module.exports.controller = function(app) {
           err.message = 'Label name already in use';
           return next(err);
         }
+      }).catch(function(err) {
+        err.status = 500;
+        return next(err);
       });
     });
 
@@ -413,8 +454,17 @@ module.exports.controller = function(app) {
                       res.json(body);
                     });
                   }
+                }).catch(function(err) {
+                  err.status = 500;
+                  return next(err);
                 });
+            }).catch(function(err) {
+              err.status = 500;
+              return next(err);
             });
+          }).catch(function(err) {
+            err.status = 500;
+            return next(err);
           });
         } else {
           // update file
@@ -440,6 +490,9 @@ module.exports.controller = function(app) {
             return next(err);
           });
         }
+      }).catch(function(err) {
+        err.status = 500;
+        return next(err);
       });
     });
 
@@ -502,7 +555,13 @@ module.exports.controller = function(app) {
             console.log('File not found in label dropzone');
             return next(err);
           }
+        }).catch(function(err) {
+          err.status = 500;
+          return next(err);
         });
+      }).catch(function(err) {
+        err.status = 500;
+        return next(err);
       });
     });
 
@@ -534,26 +593,36 @@ module.exports.controller = function(app) {
           id: labelId
         }
       }).then(function(label) {
-        if (label) {
-          label.getDropZoneFiles({
-            where: {
-              id: id
-            }
-          }).then(function(files) {
-            if (files && files.length > 0) {
-              var file = files[0];
-              file.destroy();
-              cloudstorage.remove(file.path);
-              res.send();
-            } else {
-              var err = new Error();
-              err.status = 404;
-              err.message = 'File not found in label dropzone';
-              console.log('File not found in label dropzone');
-              return next(err);
-            }
-          });
+        if (!label) {
+          var err = new Error();
+          err.status = 404;
+          err.message = 'Requested label does not exist';
+          return next(err);
         }
+        label.getDropZoneFiles({
+          where: {
+            id: id
+          }
+        }).then(function(files) {
+          if (files && files.length > 0) {
+            var file = files[0];
+            file.destroy();
+            cloudstorage.remove(file.path);
+            res.send();
+          } else {
+            var err = new Error();
+            err.status = 404;
+            err.message = 'File not found in label dropzone';
+            console.log('File not found in label dropzone');
+            return next(err);
+          }
+        }).catch(function(err) {
+          err.status = 500;
+          return next(err);
+        });
+      }).catch(function(err) {
+        err.status = 500;
+        return next(err);
       });
     });
 
@@ -597,9 +666,16 @@ module.exports.controller = function(app) {
           beatport.validate(xmls).then(function(results) {
             res.send(results);
           }).catch(function(err) {
+            err.status = 500;
             return next(err);
           });
+        }).catch(function(err) {
+          err.status = 500;
+          return next(err);
         });
+      }).catch(function(err) {
+        err.status = 500;
+        return next(err);
       });
     });
 
@@ -648,9 +724,16 @@ module.exports.controller = function(app) {
             });
             res.send(results);
           }).catch(function(err) {
+            err.status = 500;
             return next(err);
           });
+        }).catch(function(err) {
+          err.status = 500;
+          return next(err);
         });
+      }).catch(function(err) {
+        err.status = 500;
+        return next(err);
       });
     });
 
@@ -743,7 +826,10 @@ module.exports.controller = function(app) {
         },
         include: [{
           model: model.User,
-          required: true
+          required: true,
+          where: {
+            id: userId
+          }
         }]
       }).then(function(label) {
         if (!label) {
@@ -795,6 +881,9 @@ module.exports.controller = function(app) {
             }
           }).then(function(dropZoneFiles) {
             res.send(dropZoneFiles);
+          }).catch(function(err) {
+            err.status = 500;
+            return next(err);
           });
         } else {
           var err = new Error();
@@ -802,6 +891,9 @@ module.exports.controller = function(app) {
           err.message = 'Requested label does not exist';
           return next(err);
         }
+      }).catch(function(err) {
+        err.status = 500;
+        return next(err);
       });
     });
 
@@ -834,6 +926,9 @@ module.exports.controller = function(app) {
             order: 'catalogNumber DESC'
           }).then(function(releases) {
             res.send(releases);
+          }).catch(function(err) {
+            err.status = 500;
+            return next(err);
           });
         } else {
           var err = new Error();
@@ -841,6 +936,9 @@ module.exports.controller = function(app) {
           err.message = 'Requested label does not exist';
           return next(err);
         }
+      }).catch(function(err) {
+        err.status = 500;
+        return next(err);
       });
     });
 
@@ -896,6 +994,9 @@ module.exports.controller = function(app) {
         group: ['ReleaseId', 'dataColumn']
       }).then(function(results) {
         res.send(results);
+      }).catch(function(err) {
+        err.status = 500;
+        return next(err);
       });
     });
 
@@ -941,6 +1042,9 @@ module.exports.controller = function(app) {
         group: ['labelId']
       }).then(function(results) {
         res.send(results);
+      }).catch(function(err) {
+        err.status = 500;
+        return next(err);
       });
     });
 
@@ -950,7 +1054,7 @@ module.exports.controller = function(app) {
    * already in progress the old request is deleted from the CDN
    */
   app.post('/labels/:labelId/profilePicture/createFile',
-    authenticationUtils.ensureAuthenticated,
+    authenticationUtils.ensureAuthenticated, ensureLabelManagerOrCompanyOwner,
     imagesController.createImageFactory('logo', helper));
 
   /**
@@ -959,7 +1063,7 @@ module.exports.controller = function(app) {
    * as label information
    */
   app.post('/labels/:labelId/profilePicture/confirmFile',
-    authenticationUtils.ensureAuthenticated,
+    authenticationUtils.ensureAuthenticated, ensureLabelManagerOrCompanyOwner,
     imagesController.confirmImageFactory(
       'logo', ['small', 'medium', 'large'], helper));
 
