@@ -179,8 +179,9 @@ module.exports.controller = function(app) {
    * @param {string} req.body.searchString - The string to search, supposed
    *     name of the label
    * @param {object} res - The response object
+   * @param {function} next - Middleware function to continue the call chain
    */
-  app.get('/labels/search/:searchString', function(req, res) {
+  app.get('/labels/search/:searchString', function(req, res, next) {
     req.checkParams('searchString', 'Invalid search string')
       .notEmpty();
     var errors = req.validationErrors();
@@ -207,8 +208,9 @@ module.exports.controller = function(app) {
    * @param {integer} req.body.searchString - The string to search, supposed
    *     name of the label
    * @param {object} res - The response object
+   * @param {function} next - Middleware function to continue the call chain
    */
-  app.get('/labels/searchExact/:searchString', function(req, res) {
+  app.get('/labels/searchExact/:searchString', function(req, res, next) {
     req.checkParams('searchString', 'Invalid search string')
       .notEmpty();
     var errors = req.validationErrors();
@@ -951,10 +953,11 @@ module.exports.controller = function(app) {
    *
    * @param {object} req - The request object
    * @param {object} res - The response object
+   * @param {function} next - Middleware function to continue the call chain
    */
   app.get('/labels/:labelId/revenues/expanded/:startDate?/:endDate?',
     authenticationUtils.ensureAuthenticated, ensureLabelManagerOrCompanyOwner,
-    function(req, res) {
+    function(req, res, next) {
       // Try to format input dates, if format does not match (stricly) then
       // startDate.isValid() and endDate.isValid() are false
       var startDate = moment(req.params.startDate, 'DD-MM-YYYY', true);
@@ -1006,10 +1009,11 @@ module.exports.controller = function(app) {
    *
    * @param {object} req - The request object
    * @param {object} res - The response object
+   * @param {function} next - Middleware function to continue the call chain
    */
   app.get('/labels/:labelId/revenues/total/:startDate?/:endDate?',
     authenticationUtils.ensureAuthenticated, ensureLabelManagerOrCompanyOwner,
-    function(req, res) {
+    function(req, res, next) {
       // Try to format input dates, if format does not match (stricly) then
       // startDate.isValid() and endDate.isValid() are false
       var startDate = moment(req.params.startDate, 'DD-MM-YYYY', true);
