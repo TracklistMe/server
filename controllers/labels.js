@@ -165,6 +165,12 @@ module.exports.controller = function(app) {
    * @param {object} res - The response object
    */
   app.get('/labels/search/:searchString', function(req, res) {
+    req.checkParams('searchString', 'Invalid search string')
+      .notEmpty();
+    var errors = req.validationErrors();
+    if (errors) {
+      return throwValidationError(errors, next);
+    }
     var searchString = req.params.searchString;
     model.Label.findAll({
       where: ['displayName LIKE ?', '%' + searchString + '%']
@@ -184,6 +190,12 @@ module.exports.controller = function(app) {
    * @param {object} res - The response object
    */
   app.get('/labels/searchExact/:searchString', function(req, res) {
+    req.checkParams('searchString', 'Invalid search string')
+      .notEmpty();
+    var errors = req.validationErrors();
+    if (errors) {
+      return throwValidationError(errors, next);
+    }
     var searchString = req.params.searchString;
     model.Label.find({
       where: {
@@ -471,8 +483,8 @@ module.exports.controller = function(app) {
           })
         }).then(function(files) {
           if (files.length > 0) {
-            //todo(mziccard) check if file really exists in the CDN before
-            //todo(mziccard) get metadata?
+            // todo(mziccard) check if file really exists in the CDN before
+            // todo(mziccard) get metadata?
             var file = files[0];
             file.status = 'UPLOADED';
             file.save().then(function() {
@@ -655,7 +667,7 @@ module.exports.controller = function(app) {
     function(req, res, next) {
 
       req.checkParams('labelId', 'Label id is invalid').notEmpty().isInt();
-      req.checkBody( 'newLabelManager', 'newLabelManager id is invalid')
+      req.checkBody( 'newLabelManager', 'New manager id is invalid')
         .notEmpty().isInt();
       var errors = req.validationErrors();
       if (errors) {
@@ -676,35 +688,30 @@ module.exports.controller = function(app) {
           err.message = 'Requested label does not exist';
           return next(err);
         }
-
-        label.getUsers({
+        model.User.find({
           where: {
             id: newLabelManagerId
           }
-        }).then(function(users) {
-          if (users.length === 0) {
-            model.User.find({
-              where: {
-                id: newLabelManagerId
-              }
-            }).then(function(user) {
-              if (!user) {
-                var err = new Error();
-                err.status = 404;
-                err.message = 'Requested user does not exist';
-                return next(err);
-              }
-              label.addUsers(user).then(function() {
-                res.send();
-              });
-            });
-          } else {
+        }).then(function(user) {
+          if (!user) {
             var err = new Error();
-            err.status = 409;
-            err.message = 'The user is already a manager of the label';
+            err.status = 404;
+            err.message = 'Requested user does not exist';
             return next(err);
           }
+          label.addUsers(user).then(function() {
+            res.send();
+          }).catch(function(err) {
+            err.status = 500;
+            return next(err);
+          });
+        }).catch(function(err) {
+          err.status = 500;
+          return next(err);
         });
+      }).catch(function(err) {
+        err.status = 500;
+        return next(err);
       });
     });
 
@@ -733,29 +740,27 @@ module.exports.controller = function(app) {
       model.Label.find({
         where: {
           id: labelId
-        }
+        },
+        include: [{
+          model: model.User,
+          required: true
+        }]
       }).then(function(label) {
         if (!label) {
           var err = new Error();
           err.status = 404;
-          err.message = 'Requested label does not exist';
+          err.message = 'Requested user is not a label manager';
           return next(err);
         }
-        model.User.find({
-          where: {
-            id: userId
-          }
-        }).then(function(user) {
-          if (!user) {
-            var err = new Error();
-            err.status = 404;
-            err.message = 'Requested user does not exist';
-            return next(err);
-          }
-          label.removeUser(user).then(function() {
-            res.send();
-          });
+        label.removeUser(label.Users[0]).then(function() {
+          res.send();
+        }).catch(function(err) {
+          err.status = 500;
+          return next(err);
         });
+      }).catch(function(err) {
+        err.status = 500;
+        return next(err);
       });
     });
 
