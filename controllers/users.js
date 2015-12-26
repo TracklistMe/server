@@ -45,11 +45,15 @@ module.exports.controller = function(app) {
             include: [{
               model: model.Artist,
               as: 'Producer'
+            },{model: model.Release,
+              include: model.Label
             }]
           }, {
             model: model.Release,
             include: [{
               model: model.Track
+            },{
+              model: model.Label
             }]
           }]
         }).then(function(items) {
