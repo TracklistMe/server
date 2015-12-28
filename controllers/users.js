@@ -131,8 +131,38 @@ module.exports.controller = function(app) {
         model.CartItem.create({
           UserId: req.user,
           ReleaseId: releaseId
-        }).then(function() {
-          res.send();
+        }).then(function(createdItem) {
+          // TODO (@ziccard): refactor the following code.
+          // Is it possible to have as the return object the Item 
+          // with all the inclusion executed?
+
+          
+          model.CartItem.find({
+            where: {
+              id: createdItem.id
+            },
+            include: [{
+              model: model.Track,
+              include: [{
+                model: model.Artist,
+                as: 'Producer'
+              },{model: model.Release,
+                include: model.Label
+              }]
+            }, {
+              model: model.Release,
+              include: [{
+                model: model.Track
+              },{
+                model: model.Label
+              }]
+            }]
+          }).then(function(items) {
+            res.send(items);
+          });
+
+
+
         });
       });
     });
@@ -159,8 +189,41 @@ module.exports.controller = function(app) {
         model.CartItem.create({
           UserId: req.user,
           TrackId: trackId
-        }).then(function() {
-          res.send();
+        }).then(function(item) {
+          
+
+          // TODO (@ziccard): refactor the following code.
+          // Is it possible to have as the return object the Item 
+          // with all the inclusion executed?
+
+          
+          model.CartItem.find({
+            where: {
+              id: item.id
+            },
+            include: [{
+              model: model.Track,
+              include: [{
+                model: model.Artist,
+                as: 'Producer'
+              },{model: model.Release,
+                include: model.Label
+              }]
+            }, {
+              model: model.Release,
+              include: [{
+                model: model.Track
+              },{
+                model: model.Label
+              }]
+            }]
+          }).then(function(items) {
+            res.send(items);
+          });
+
+
+
+
         });
       });
     });
@@ -183,7 +246,6 @@ module.exports.controller = function(app) {
         cartItem.destroy().then(function() {
           res.send();
         });
-        console.log(cartItem);
       });
     });
 
