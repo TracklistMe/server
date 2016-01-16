@@ -345,8 +345,6 @@ module.exports.controller = function(app) {
    * Early user login with email and password, returns an authentication token
    */
   app.post('/earlyUsers/login', function(req, res, next) {
-
-    req.checkParams('email', 'Invalid early user email').notEmpty().isEmail();
     req.checkBody('password', 'Missing password').notEmpty();
     var errors = req.validationErrors();
     if (errors) {
