@@ -17,8 +17,6 @@ module.exports.controller = function(app) {
    */
   function sendVerificationEmail(earlyUser, referredBy, callback) {
     callback = callback || function(error, json) {
-      console.log(earlyUser.email);
-      console.log(error);
     };
     var emailFile = config.EMAIL_TEMPLATES.CONFIRM_EARLY_USER;
     if (earlyUser.isArtist) {
@@ -243,8 +241,6 @@ module.exports.controller = function(app) {
         var verificationCode = uuid.v4();
         earlyUser.verificationCode = verificationCode;
         earlyUser.save().then(function() {
-          console.log(earlyUser.id, email, verificationCode,
-            earlyUser.ReferringUser);
           sendVerificationEmail(earlyUser, earlyUser.ReferringUser);
           return res.send({
             message: 'Verification email successfully sent'
@@ -259,7 +255,6 @@ module.exports.controller = function(app) {
           status: 404,
           message: 'No early user to verify'
         };
-        console.log('No early user to verify');
         return next(err);
       }
     });
@@ -345,6 +340,7 @@ module.exports.controller = function(app) {
    * Early user login with email and password, returns an authentication token
    */
   app.post('/earlyUsers/login', function(req, res, next) {
+    req.checkBody('email', 'Invalid early user email').notEmpty().isEmail();
     req.checkBody('password', 'Missing password').notEmpty();
     var errors = req.validationErrors();
     if (errors) {
@@ -376,6 +372,7 @@ module.exports.controller = function(app) {
           return next(error); 
         }
         return res.send({
+          user: {id: user.id},
           token: authenticationUtils.createEarlyToken(user)
         });
       });
