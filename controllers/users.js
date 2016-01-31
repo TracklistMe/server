@@ -400,7 +400,6 @@ module.exports.controller = function(app) {
    */
   app.get('/users/search/:searchString',
     authenticationUtils.ensureAuthenticated,
-    authenticationUtils.ensureAdmin,
     function(req, res) {
       var searchString = req.params.searchString;
       model.User.findAll({

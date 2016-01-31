@@ -674,16 +674,27 @@ Company.belongsToMany(User, {
 Company.belongsToMany(Label, {
   through: 'CompaniesLabels'
 });
+
 Label.belongsToMany(Company, {
   through: 'CompaniesLabels'
 });
 
+/**
+ * Model: LabelsUsers (association for label's owners)
+ */
+var LabelsUsers = sequelizeObject.define('LabelsUsers', {
+  isOwner: {
+    type: Sequelize.BOOLEAN,
+    defaultValue: false
+  }
+});
+
 // User <--> Labels
 User.belongsToMany(Label, {
-  through: 'LabelsUsers'
+  through: LabelsUsers
 });
 Label.belongsToMany(User, {
-  through: 'LabelsUsers'
+  through: LabelsUsers
 });
 
 // Label <--> DropZoneFile

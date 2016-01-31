@@ -29,7 +29,8 @@ module.exports.controller = function(app) {
   }
 
   /**
-   * Ensures current user is the owner of the company (or admin)
+   * Ensures current user is the owner of the company (or admin). If successful
+   * this method sets a company entity in the req object
    *
    * @param {object} req - The request object
    * @param {integer} req.body.companyId - The id of the label's company
@@ -60,6 +61,7 @@ module.exports.controller = function(app) {
           id: companyId
         }
       }).then(function(company) {
+        req.company = company;
         if (!company) {
           var err = new Error();
           err.status = 401;
@@ -83,32 +85,30 @@ module.exports.controller = function(app) {
   function ensureCompanyOwnerFromLabel(req, res, next) {
     var labelId = req.params.labelId;
     var userId = req.user;
-    authenticationUtils.checkScopes(['admin'])(req, res, function(err) {
+    authenticationUtils.checkScopes(['satan'])(req, res, function(err) {
       if (!err) {
         return next();
       }
-      model.Company.find({
-        include: [{
-          model: model.Label,
-          required: true,
-          where: {
-            id: labelId
-          }
-        }, {
+      model.Label.find({
+        include: [
+        {
           model: model.User,
           required: true,
           where: {
             id: userId
           }
-        }],
-      }).then(function(company) {
-        if (!company) {
-          var err = new Error();
-          err.status = 401;
-          err.message = 'You don\'t have access to the requested resource';
-          return next(err);
+        }]
+      }).then(function(label) {
+        if (label) {
+          var user = label.Users[0];
+          if (user.LabelsUsers.isOwner) {
+            return next();
+          }
         }
-        return next();
+         var err = new Error();
+        err.status = 401;
+        err.message = 'You don\'t have access to the requested resource';
+        return next(err);
       });
     });
   }
@@ -339,39 +339,66 @@ module.exports.controller = function(app) {
       var companyId = req.body.companyId;
       var labelName = req.body.labelName;
 
-      model.Label.findOrCreate({
-        where: {
-          displayName: labelName
-        }
-      }).then(function(label) {
-        // findOrCreate promise returns an array where the first element is the
-        // found/created entity, while the second element is true iff it has
-        // just been created
-        var created = label[1];
-        label = label[0];
-        if (created) {
-          model.Company.find({
-            where: {
-              id: companyId
+      var withCompany = function(company) {
+        model.Label.findOrCreate({
+          where: {
+            displayName: labelName
+          }
+        }).then(function(label) {
+          // findOrCreate promise returns an array where the first elem\ent is
+          // the found/created entity, while the second element is true iff it
+          // has just been created
+          var created = label[1];
+          label = label[0];
+          if (created) {
+            if (!company) {
+              var err = new Error();
+              err.status = 404;
+              err.message = 'Requested company does not exist';
+              return next(err);
             }
-          }).then(function(company) {
-            company.addLabel(label).then(function() {
-              res.send();                         
+            company.getUsers().then(function(owners) {
+              owners.forEach(function(owner) {
+                label.addUser(owner, {
+                  isOwner: true
+                }).catch(function(err) {
+                  err.status = 500;
+                  return next(err);
+                });
+              });
+              company.addLabel(label).then(function() {
+                res.send();                         
+              }).catch(function(err) {
+                err.status = 500;
+                return next(err);
+              });
             }).catch(function(err) {
               err.status = 500;
               return next(err);
             });
-          });
-        } else {
-          var err = new Error();
-          err.status = 409;
-          err.message = 'Label name already in use';
+          } else {
+            err = new Error();
+            err.status = 409;
+            err.message = 'Label name already in use';
+            return next(err);
+          }
+        }).catch(function(err) {
+          err.status = 500;
           return next(err);
-        }
-      }).catch(function(err) {
-        err.status = 500;
-        return next(err);
-      });
+        });
+      };
+      if (req.company) {
+        withCompany(req.company);
+      } else {
+        model.Company.find({
+          where: {
+            id: companyId
+          }
+        }).then(withCompany).catch(function(err) {
+          err.status = 500;
+          return next(err);              
+        });
+      }
     });
 
   /**
@@ -840,7 +867,14 @@ module.exports.controller = function(app) {
           err.message = 'Requested user is not a label manager';
           return next(err);
         }
-        label.removeUser(label.Users[0]).then(function() {
+        var user = label.Users[0];
+        if (user.LabelsUsers.isOwner) {
+          err = new Error();
+          err.status = 409;
+          err.message = 'Cannot remove company onwer';
+          return next(err);
+        }
+        label.removeUser(user).then(function() {
           res.send();
         }).catch(function(err) {
           err.status = 500;

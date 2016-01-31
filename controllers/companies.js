@@ -311,6 +311,8 @@ module.exports.controller = function(app) {
           id: companyId
         },
         include: [{
+          model: model.Label
+        },{
           model: model.User,
           required: true,
           where: {
@@ -324,7 +326,18 @@ module.exports.controller = function(app) {
           err.message = 'Requested user is not company owner';
           return next(err);
         }
-        company.removeUser(company.Users[0]).then(function() {
+        var user = company.Users[0];
+        company.removeUser(user).then(function() {
+          var removePromises = [];
+          company.Labels.forEach(function(label) {
+            removePromises.push(label.removeUser(user));
+          });
+          Sequelize.Promise.all(removePromises).then(function() {
+            res.send();
+          }).catch(function(err) {
+            err.status = 500;
+            return next(err);
+          });
           res.send();
         }).catch(function(err) {
           err.status = 500;
@@ -364,7 +377,10 @@ module.exports.controller = function(app) {
       model.Company.find({
         where: {
           id: companyId
-        }
+        },
+        include: [{
+          model: model.Label
+        }]
       }).then(function(company) {
         if (!company) {
           var err = new Error();
@@ -384,7 +400,16 @@ module.exports.controller = function(app) {
             return next(err);
           }
           company.addUsers(user).then(function() {
-            res.send();
+            var addPromises = [];
+            company.Labels.forEach(function(label) {
+              addPromises.push(label.addUser(user, {isOwner: true}));
+            });
+            Sequelize.Promise.all(addPromises).then(function() {
+              res.send();
+            }).catch(function(err) {
+              err.status = 500;
+              return next(err);
+            });
           }).catch(function(err) {
             err.status = 500;
             return next(err);

@@ -8,7 +8,7 @@ var model = rootRequire('models/model');
 var cloudstorage = rootRequire('libs/cdn/cloudstorage');
 var rabbitmq = rootRequire('libs/message_broker/rabbitmq');
 var imagesController = rootRequire('controllers/images');
-
+var validator = rootRequire('validators/releases');
 
 module.exports.controller = function(app) {
 
@@ -389,10 +389,21 @@ module.exports.controller = function(app) {
   app.post('/releases/',
     authenticationUtils.ensureAuthenticated,
     authenticationUtils.ensureAdmin,
-    function(req, res) {
+    function(req, res, next) {
 
       var release = req.body.release;
       var idLabel = req.body.idLabel;
+
+      req.checkBody('idLabel', 'Invalid company id').notEmpty().isInt();
+      var errors = req.validationErrors() || validator.validate(release);
+      if (errors) {
+        var err = new Error();
+        err.status = 400;
+        err.message = 'There have been validation errors';
+        err.validation = errors;
+        return next(err);
+      }
+
       console.log('____________' + idLabel);
       console.log('ADD RELEASE');
       console.log(release);
@@ -421,10 +432,15 @@ module.exports.controller = function(app) {
    */
   app.put('/releases/:id',
     authenticationUtils.ensureAuthenticated, authenticationUtils.ensureAdmin,
-    function(req, res) {
+    function(req, res, next) {
       var releaseId = req.params.id;
       var release = req.body.release;
       var trackUpdate = false;
+
+      var validationError = validator.validate(release);
+      if (validationError) {
+        return next(validationError);
+      }
 
       // Update the release
       model.Release
