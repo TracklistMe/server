@@ -332,6 +332,26 @@ var Track = sequelizeObject.define('Track', {
 exports.Track = Track;
 
 /**
+ * Model: Tracklist
+ */
+var Tracklist = sequelizeObject.define('Tracklist', {
+  id: {
+    type: Sequelize.INTEGER,
+    autoIncrement: true,
+    primaryKey: true
+  },
+  title: Sequelize.STRING,
+  cover: Sequelize.STRING,
+  isActive: {
+    type: Sequelize.BOOLEAN,
+    allowNull: false,
+    defaultValue: true
+  }
+});
+
+exports.Tracklist = Tracklist;
+
+/**
  * Model: CartItem
  */
 var CartItem = sequelizeObject.define('CartItem', {
@@ -725,6 +745,21 @@ Track.belongsToMany(Release, {
 Release.belongsToMany(Track, {
   through: ReleaseTracks
 });
+
+
+// Tracks <--> Tracklists 
+var TracklistTracks = sequelizeObject.define('TracklistTracks', {
+  position: Sequelize.INTEGER
+});
+
+Track.belongsToMany(Tracklist, {
+  through: TracklistTracks
+});
+
+Tracklist.belongsToMany(Track, {
+  through: TracklistTracks
+});
+
 
 // Artist <--> Tracks (Producer)
 var ProducerTracks = sequelizeObject.define('ArtistTracks', {});
