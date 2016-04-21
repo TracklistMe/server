@@ -760,6 +760,11 @@ Tracklist.belongsToMany(Track, {
   through: TracklistTracks
 });
 
+// Tracklists <--> User
+var OwnerTracklists = sequelizeObject.define('OwnerTracklists', {});
+User.belongsToMany(Tracklist, {
+  through: OwnerTracklists
+});
 
 // Artist <--> Tracks (Producer)
 var ProducerTracks = sequelizeObject.define('ArtistTracks', {});
