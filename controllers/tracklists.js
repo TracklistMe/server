@@ -35,10 +35,12 @@ module.exports.controller = function(app) {
       where: {
         id: tracklistId
       },
-      include:
+      include:[
       {
         model: model.Track
-      }
+      },{
+        model: model.User
+      }]
     }).then(function(tracklist) {
       res.send(tracklist);
     }).catch(function(err) {

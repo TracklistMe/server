@@ -762,8 +762,12 @@ Tracklist.belongsToMany(Track, {
 
 // Tracklists <--> User
 var OwnerTracklists = sequelizeObject.define('OwnerTracklists', {});
-User.belongsToMany(Tracklist, {
-  through: OwnerTracklists
+Tracklist.belongsTo(User, {
+  foreignKey: {
+    name: 'UserId',
+    allowNull: false
+  },
+  onDelete: 'CASCADE'
 });
 
 // Artist <--> Tracks (Producer)
