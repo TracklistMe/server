@@ -38,6 +38,7 @@ var companies = rootRequire('controllers/companies.js');
 var artists = rootRequire('controllers/artists.js');
 var labels = rootRequire('controllers/labels.js');
 var tracks = rootRequire('controllers/tracks.js');
+var tracklists = rootRequire('controllers/tracklists.js');
 var releases = rootRequire('controllers/releases.js');
 var currencies = rootRequire('controllers/currencies.js');
 var prices = rootRequire('controllers/prices.js');
@@ -134,6 +135,7 @@ app.use(function(req, res, next) {
   // Request headers you wish to allow
   res.setHeader('Access-Control-Allow-Headers', 'my-header,X-Requested-With,content-type,Authorization');
   //res.setHeader("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization");
+  res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
   // Set to true if you need the website to include cookies in the requests sent
   // to the API (e.g. in case you use sessions)
   res.setHeader('Access-Control-Allow-Credentials', true);
@@ -299,6 +301,7 @@ companies.controller(app);
 artists.controller(app);
 labels.controller(app);
 tracks.controller(app);
+tracklists.controller(app);
 releases.controller(app);
 genres.controller(app);
 authenticators.controller(app);
