@@ -29,7 +29,6 @@ module.exports.controller = function(app) {
    * @param {function} next - Middleware function to continue the call chain
    **/
   app.get('/tracklists/:tracklistId', function(req, res, next) {
-
     var tracklistId = req.params.tracklistId;
     model.Tracklist.find({
       where: {
@@ -37,7 +36,23 @@ module.exports.controller = function(app) {
       },
       include:[
       {
-        model: model.Track
+        model: model.Track,
+        include: [
+        {
+          model: model.Genre
+        },
+        {
+          model: model.Artist,
+          as: 'Remixer'
+        }, {
+          model: model.Artist,
+          as: 'Producer'
+        }, {
+          model: model.Release,
+          include: [{
+            model: model.Label
+          }]
+        }]
       },{
         model: model.User
       }]

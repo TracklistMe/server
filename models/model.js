@@ -342,6 +342,7 @@ var Tracklist = sequelizeObject.define('Tracklist', {
   },
   title: Sequelize.STRING,
   cover: Sequelize.STRING,
+  header: Sequelize.STRING,
   isActive: {
     type: Sequelize.BOOLEAN,
     allowNull: false,
@@ -761,7 +762,6 @@ Tracklist.belongsToMany(Track, {
 });
 
 // Tracklists <--> User
-var OwnerTracklists = sequelizeObject.define('OwnerTracklists', {});
 Tracklist.belongsTo(User, {
   foreignKey: {
     name: 'UserId',
