@@ -26,6 +26,29 @@ module.exports.controller = function(app) {
   });
 
   /**
+   * GET /me/tracklists
+   * Get authenticated user tracklists informations
+   */
+  app.get('/me/tracklists', authenticationUtils.ensureAuthenticated, function(req, res) {
+
+    model.Tracklist.findAll({
+      where: {
+        UserId: req.user
+      },
+      include:[
+      {
+        model: model.Track,
+      }]
+    }).then(function(tracklists) {
+      res.send(tracklists);
+    }).catch(function(err) {
+      err.status = 500;
+      return next(err);
+    });
+  });
+
+
+  /**
    * GET /me
    * Get authenticated user profile information
    */
